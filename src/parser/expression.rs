@@ -11,7 +11,8 @@ use super::{
     binary_operation::parse_binary_operation,
     number::parse_number,
     trivial_tokens::{
-        parse_bang, parse_close_paren, parse_minus, parse_open_paren, parse_plus, parse_tilda,
+        parse_bang, parse_close_paren, parse_double_minus, parse_double_plus, parse_minus,
+        parse_open_paren, parse_plus, parse_tilda,
     },
     whitespace::parse_whitespace,
     Stream,
@@ -75,7 +76,15 @@ pub fn parse_number_expression<'s>(input: &mut Stream<'s>) -> PResult<Expression
 pub fn parse_unary_operator<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
     parse_whitespace(input)?;
 
-    combinator::alt((parse_plus, parse_minus, parse_tilda, parse_bang)).parse_next(input)
+    combinator::alt((
+        parse_plus,
+        parse_minus,
+        parse_tilda,
+        parse_bang,
+        parse_double_plus,
+        parse_double_minus,
+    ))
+    .parse_next(input)
 }
 
 pub fn parse_unary_plus_operation<'s>(input: &mut Stream<'s>) -> PResult<UnaryOp> {
@@ -85,6 +94,7 @@ pub fn parse_unary_plus_operation<'s>(input: &mut Stream<'s>) -> PResult<UnaryOp
         .map(|v| UnaryOp::Plus(Arc::new(v)))
         .parse_next(input)
 }
+
 pub fn parse_unary_negation_operation<'s>(input: &mut Stream<'s>) -> PResult<UnaryOp> {
     parse_whitespace(input)?;
 
@@ -92,6 +102,7 @@ pub fn parse_unary_negation_operation<'s>(input: &mut Stream<'s>) -> PResult<Una
         .map(|v| UnaryOp::Negation(Arc::new(v)))
         .parse_next(input)
 }
+
 pub fn parse_unary_bitwise_not_operation<'s>(input: &mut Stream<'s>) -> PResult<UnaryOp> {
     parse_whitespace(input)?;
 
@@ -99,11 +110,27 @@ pub fn parse_unary_bitwise_not_operation<'s>(input: &mut Stream<'s>) -> PResult<
         .map(|v| UnaryOp::BitwiseNot(Arc::new(v)))
         .parse_next(input)
 }
+
 pub fn parse_unary_logical_not_operation<'s>(input: &mut Stream<'s>) -> PResult<UnaryOp> {
     parse_whitespace(input)?;
 
     parse_factor
         .map(|v| UnaryOp::LogicalNot(Arc::new(v)))
+        .parse_next(input)
+}
+
+pub fn parse_prefix_increment_operation<'s>(input: &mut Stream<'s>) -> PResult<UnaryOp> {
+    parse_whitespace(input)?;
+
+    parse_factor
+        .map(|v| UnaryOp::PrefixIncrement(Arc::new(v)))
+        .parse_next(input)
+}
+pub fn parse_prefix_decrement_operation<'s>(input: &mut Stream<'s>) -> PResult<UnaryOp> {
+    parse_whitespace(input)?;
+
+    parse_factor
+        .map(|v| UnaryOp::PrefixDecrement(Arc::new(v)))
         .parse_next(input)
 }
 
@@ -115,6 +142,8 @@ pub fn parse_unary_operation<'s>(input: &mut Stream<'s>) -> PResult<UnaryOp> {
         "-" => parse_unary_negation_operation,
         "~" => parse_unary_bitwise_not_operation,
         "!" => parse_unary_logical_not_operation,
+        "++" => parse_prefix_increment_operation,
+        "--" => parse_prefix_decrement_operation,
         _ => combinator::fail
     }
     .parse_next(input)

@@ -44,11 +44,11 @@ pub fn parse_comma<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
 }
 
 pub fn parse_plus<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
-    parse_multiple_chars_not_followed_by(input, "+", &["="])
+    parse_multiple_chars_not_followed_by(input, "+", &["+", "="])
 }
 
 pub fn parse_minus<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
-    parse_multiple_chars_not_followed_by(input, "-", &["="])
+    parse_multiple_chars_not_followed_by(input, "-", &["-", "="])
 }
 
 pub fn parse_tilda<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
@@ -165,4 +165,12 @@ pub fn parse_question_mark<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
 
 pub fn parse_colon<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
     parse_multiple_chars(input, ":")
+}
+
+pub fn parse_double_plus<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "++")
+}
+
+pub fn parse_double_minus<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "--")
 }

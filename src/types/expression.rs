@@ -15,6 +15,8 @@ pub enum UnaryOp {
     Negation(Arc<Expression>),
     BitwiseNot(Arc<Expression>),
     LogicalNot(Arc<Expression>),
+    PrefixIncrement(Arc<Expression>),
+    PrefixDecrement(Arc<Expression>),
 }
 
 #[derive(Debug, Clone)]

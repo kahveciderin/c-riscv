@@ -31,6 +31,22 @@ impl Compile for UnaryOp {
                 instructions.extend(expression.compile(state));
                 instructions.push(Instruction::Not(Register::A0, Register::A0));
             }
+            UnaryOp::PrefixIncrement(expression) => {
+                let equivalent = BinaryOp::AssignmentAddition(
+                    expression.clone(),
+                    Arc::new(Expression::Number(1)),
+                );
+
+                instructions.extend(equivalent.compile(state));
+            }
+            UnaryOp::PrefixDecrement(expression) => {
+                let equivalent = BinaryOp::AssignmentSubtraction(
+                    expression.clone(),
+                    Arc::new(Expression::Number(1)),
+                );
+
+                instructions.extend(equivalent.compile(state));
+            }
         };
 
         instructions
