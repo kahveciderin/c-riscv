@@ -142,13 +142,12 @@ impl CompilerState {
         let total_scope_size: usize = variables.iter().map(|v| v.1.size()).sum();
         let stack_increase = nearest_multiple(total_scope_size as u32, STACK_ALIGNMENT) as usize;
 
-        let mut current_stack_size = self.get_stack_size();
-
         instructions.extend(self.expand_stack(stack_increase));
+
+        let mut current_stack_size = self.get_stack_size();
 
         for (name, datatype) in variables {
             let size = datatype.size();
-            current_stack_size += size;
             let address = current_stack_size;
             self.scopes
                 .last_mut()
@@ -159,6 +158,7 @@ impl CompilerState {
                     address,
                     datatype: datatype.clone(),
                 });
+            current_stack_size -= size;
         }
 
         instructions

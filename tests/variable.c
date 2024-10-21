@@ -1,5 +1,8 @@
 int main() {
-  int hello = 423 + 42 / 4 % 2;
-  hello *= 2 * 4;
-  return hello;
+  int hello = 3;
+  int world = 6;
+  int hmmm = 9;
+  int yes = 12;
+  int nope = 15;
+  return nope;
 }
