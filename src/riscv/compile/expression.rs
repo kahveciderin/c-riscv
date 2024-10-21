@@ -40,17 +40,9 @@ impl Compile for UnaryOp {
 macro_rules! binary_op_inner {
     ($instructions:ident, $lhs:ident, $rhs:ident, $compiler_state:ident, $body:block) => {{
         $instructions.extend($lhs.compile($compiler_state));
-        $instructions.extend($compiler_state.expand_stack(16));
-        $instructions.push(Instruction::Sd(
-            Register::A0,
-            RegisterWithOffset(0.into(), Register::Sp),
-        ));
+        $instructions.extend($compiler_state.push_register_tmp(Register::A0));
         $instructions.extend($rhs.compile($compiler_state));
-        $instructions.push(Instruction::Ld(
-            Register::A1,
-            RegisterWithOffset(0.into(), Register::Sp),
-        ));
-        $instructions.extend($compiler_state.shrink_stack(16));
+        $instructions.extend($compiler_state.pop_register_tmp(Register::A1));
 
         // at this point, A0 contains the value of rhs and A1 contains the value of lhs
         $body

@@ -226,6 +226,26 @@ impl CompilerState {
         None
     }
 
+    fn push_register_tmp(&mut self, register: Register) -> Vec<Instruction> {
+        let mut instructions = Vec::new();
+        instructions.extend(self.expand_stack(16));
+        instructions.push(Instruction::Sd(
+            register,
+            RegisterWithOffset(0.into(), Register::Sp),
+        ));
+        instructions
+    }
+
+    fn pop_register_tmp(&mut self, register: Register) -> Vec<Instruction> {
+        let mut instructions = Vec::new();
+        instructions.push(Instruction::Ld(
+            register,
+            RegisterWithOffset(0.into(), Register::Sp),
+        ));
+        instructions.extend(self.shrink_stack(16));
+        instructions
+    }
+
     fn expand_stack(&mut self, size: usize) -> Vec<Instruction> {
         println!("Expanding stack by {}", size);
         let mut instructions = Vec::new();

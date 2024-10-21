@@ -1,9 +1,10 @@
 use crate::{
     riscv::{
         instruction::Instruction,
-        values::{Register, RegisterWithOffset},
+        values::{Immediate, Register, RegisterWithOffset},
     },
-    types::statement::{IfStatement, JumpStatement, Statement}, utils::random_name::unique_identifier,
+    types::statement::{IfStatement, JumpStatement, Statement},
+    utils::random_name::unique_identifier,
 };
 
 use super::{Compile, CompilerState};
@@ -15,7 +16,7 @@ impl Compile for Statement {
             Statement::Expression { expression } => expression.compile(state),
             Statement::Null => Vec::new(),
             Statement::Scope { scope } => scope.compile(state),
-            Statement::If { statement } => statement.compile(state)
+            Statement::If { statement } => statement.compile(state),
         }
     }
 }
@@ -28,6 +29,23 @@ impl Compile for IfStatement {
 
         let end_of_if_label = unique_identifier(Some("if"), None);
         let start_of_else_label = unique_identifier(Some("if"), None);
+
+        instructions.push(Instruction::Beqz(
+            Register::A0,
+            Immediate::Label(start_of_else_label.clone()),
+        ));
+
+        instructions.extend(self.then_block.compile(state));
+
+        instructions.push(Instruction::J(Immediate::Label(end_of_if_label.clone())));
+
+        instructions.push(Instruction::Label(start_of_else_label));
+
+        if let Some(ref else_block) = self.else_block {
+            instructions.extend(else_block.compile(state));
+        }
+
+        instructions.push(Instruction::Label(end_of_if_label));
 
         instructions
     }
