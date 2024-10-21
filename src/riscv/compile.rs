@@ -20,7 +20,6 @@ pub struct CompilerVariable {
 #[derive(Debug, Clone)]
 pub struct CompilerScope {
     pub variables: Vec<CompilerVariable>,
-    pub scope_type: CompilerScopeType,
 }
 
 impl CompilerScope {
@@ -29,26 +28,18 @@ impl CompilerScope {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
-pub enum CompilerScopeType {
-    Global,
-    Function,
-    Compound,
-}
-
 #[derive(Debug)]
 pub struct CompilerState {
-    pub scopes: Vec<CompilerScope>,
+    pub scope: CompilerScope,
     pub stack_size: usize,
 }
 
 impl CompilerState {
     pub fn new() -> Self {
         CompilerState {
-            scopes: vec![CompilerScope {
+            scope: CompilerScope {
                 variables: Vec::new(),
-                scope_type: CompilerScopeType::Global,
-            }],
+            },
             stack_size: 0,
         }
     }
@@ -57,12 +48,18 @@ impl CompilerState {
         self.stack_size
     }
 
-    pub fn create_function_scope(&mut self, additional_stack_size: usize) -> Vec<Instruction> {
+    pub fn create_function_scope(
+        &mut self,
+        variables: Vec<(String, Datatype)>,
+    ) -> Vec<Instruction> {
         let mut instructions = Vec::new();
 
-        self.push_scope(CompilerScopeType::Function);
+        self.scope.variables = Vec::new();
+
+        instructions.push(Instruction::Comment("Function Prologue".to_owned()));
+
         // expand the stack
-        instructions.extend(self.expand_stack(additional_stack_size));
+        instructions.extend(self.expand_stack(32));
 
         // store the return address
         instructions.push(Instruction::Sd(
@@ -83,7 +80,29 @@ impl CompilerState {
         ));
 
         instructions.push(Instruction::Comment(String::from(
-            "prologue finished, following is the body",
+            "Finished function prologue, now allocating space for variables",
+        )));
+
+        let total_scope_size: usize = variables.iter().map(|v| v.1.size()).sum();
+        let stack_increase = nearest_multiple(total_scope_size as u32, STACK_ALIGNMENT) as usize;
+
+        instructions.extend(self.expand_stack(stack_increase));
+
+        let mut current_stack_size = self.get_stack_size();
+
+        for (name, datatype) in variables {
+            let size = datatype.size();
+            let address = current_stack_size;
+            self.scope.variables.push(CompilerVariable {
+                name,
+                address,
+                datatype: datatype.clone(),
+            });
+            current_stack_size -= size;
+        }
+
+        instructions.push(Instruction::Comment(String::from(
+            "Finished allocating space for variables",
         )));
 
         instructions
@@ -92,19 +111,16 @@ impl CompilerState {
     pub fn return_from_function(&mut self) -> Vec<Instruction> {
         let mut instructions = Vec::new();
 
+        instructions.push(Instruction::Comment(
+            "Destroying the stack we created for the variables".to_owned(),
+        ));
+        instructions.extend(self.exit_scope());
+
         instructions.push(Instruction::Comment(String::from(
-            "the following is a return instruction",
+            "Returning the saved variables",
         )));
 
-        let mut scopes_clone = self.scopes.clone();
-        while scopes_clone.last().unwrap().scope_type != CompilerScopeType::Function {
-            let current_scope = scopes_clone.pop().unwrap();
-            instructions.extend(self.generate_delete_instructions_for_scope(current_scope));
-
-            if self.scopes.last().unwrap().scope_type == CompilerScopeType::Global {
-                break;
-            }
-        }
+        self.generate_delete_instructions_for_scope(&(self.scope.clone()));
 
         // restore the saved register 1
         instructions.push(Instruction::Ld(
@@ -135,50 +151,9 @@ impl CompilerState {
         instructions
     }
 
-    pub fn create_scope(&mut self, variables: Vec<(String, Datatype)>) -> Vec<Instruction> {
-        let mut instructions = Vec::new();
-
-        self.push_scope(CompilerScopeType::Compound);
-        let total_scope_size: usize = variables.iter().map(|v| v.1.size()).sum();
-        let stack_increase = nearest_multiple(total_scope_size as u32, STACK_ALIGNMENT) as usize;
-
-        instructions.extend(self.expand_stack(stack_increase));
-
-        let mut current_stack_size = self.get_stack_size();
-
-        for (name, datatype) in variables {
-            let size = datatype.size();
-            let address = current_stack_size;
-            self.scopes
-                .last_mut()
-                .unwrap()
-                .variables
-                .push(CompilerVariable {
-                    name,
-                    address,
-                    datatype: datatype.clone(),
-                });
-            current_stack_size -= size;
-        }
-
-        instructions
-    }
-
-    pub fn clean_scope_stack(&mut self) -> Vec<Instruction> {
-        let mut instructions = Vec::new();
-
-        let scope = self.scopes.last().unwrap();
-        let total_scope_size = scope.size();
-        let stack_decrease = nearest_multiple(total_scope_size as u32, STACK_ALIGNMENT) as usize;
-
-        instructions.extend(self.shrink_stack(stack_decrease));
-
-        instructions
-    }
-
     pub fn generate_delete_instructions_for_scope(
         &mut self,
-        scope: CompilerScope,
+        scope: &CompilerScope,
     ) -> Vec<Instruction> {
         let mut instructions = Vec::new();
 
@@ -190,36 +165,22 @@ impl CompilerState {
         instructions
     }
 
-    pub fn destroy_scope(&mut self) -> Vec<Instruction> {
+    pub fn exit_scope(&mut self) -> Vec<Instruction> {
         let mut instructions = Vec::new();
 
-        let scope = self.pop_scope();
-        let total_scope_size = scope.size();
+        let total_scope_size = self.scope.size();
         let increased_stack_size =
             nearest_multiple(total_scope_size as u32, STACK_ALIGNMENT) as usize;
 
-        instructions.extend(self.shrink_stack(increased_stack_size));
+        instructions.extend(self.decrease_stack(increased_stack_size));
 
         instructions
     }
 
-    fn push_scope(&mut self, scope_type: CompilerScopeType) {
-        self.scopes.push(CompilerScope {
-            variables: Vec::new(),
-            scope_type,
-        });
-    }
-
-    fn pop_scope(&mut self) -> CompilerScope {
-        self.scopes.pop().unwrap()
-    }
-
     pub fn get_variable(&self, name: &str) -> Option<CompilerVariable> {
-        for scope in self.scopes.iter().rev() {
-            for variable in &scope.variables {
-                if variable.name == name {
-                    return Some(variable.clone());
-                }
+        for variable in &self.scope.variables {
+            if variable.name == name {
+                return Some(variable.clone());
             }
         }
 

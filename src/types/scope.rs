@@ -2,14 +2,13 @@ use crate::parser::ParserScopeState;
 
 use super::{declaration::Declaration, statement::Statement};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum ScopeItem {
     Statement(Statement),
     Declaration(Declaration),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Scope {
     pub items: Vec<ScopeItem>,
-    pub scope_state: ParserScopeState,
 }

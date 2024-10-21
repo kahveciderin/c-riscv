@@ -27,7 +27,7 @@ pub struct ParserVariable {
     pub datatype: Datatype,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ParserScopeState {
     variables: Vec<Arc<ParserVariable>>,
 }
@@ -45,8 +45,12 @@ impl ParserScopeState {
             datatype,
         };
         let variable = Arc::new(variable);
-        self.variables.push(variable.clone());
+        self.insert_variable(variable.clone());
         variable
+    }
+
+    pub fn insert_variable(&mut self, variable: Arc<ParserVariable>) {
+        self.variables.push(variable);
     }
 
     pub fn get_variable(&self, variable: &str) -> Option<Arc<ParserVariable>> {
@@ -64,15 +68,38 @@ impl ParserScopeState {
 }
 
 #[derive(Debug)]
+pub struct LoopState {
+    id: String,
+}
+
+#[derive(Debug)]
 pub struct ParserState {
     scope: Vec<ParserScopeState>,
+    function_scope: ParserScopeState,
+    loop_state: Vec<LoopState>,
 }
 
 impl ParserState {
     pub fn new() -> Self {
         ParserState {
             scope: vec![ParserScopeState::new()],
+            function_scope: ParserScopeState::new(),
+            loop_state: vec![],
         }
+    }
+
+    pub fn push_loop(&mut self, t: String) -> String {
+        let id = unique_identifier(Some(t.as_str()), None);
+        self.loop_state.push(LoopState { id: id.clone() });
+        id
+    }
+
+    pub fn pop_loop(&mut self) -> LoopState {
+        self.loop_state.pop().unwrap()
+    }
+
+    pub fn get_loop(&self) -> Option<&LoopState> {
+        self.loop_state.last()
     }
 
     pub fn push_scope(&mut self) {
@@ -92,7 +119,13 @@ impl ParserState {
     }
 
     pub fn add_variable(&mut self, variable: String, datatype: Datatype) -> Arc<ParserVariable> {
-        self.get_current_scope().add_variable(variable, datatype)
+        let variable = self.get_current_scope().add_variable(variable, datatype);
+        self.function_scope.insert_variable(variable.clone());
+        variable
+    }
+
+    pub fn start_function_scope(&mut self) {
+        self.function_scope = ParserScopeState::new();
     }
 
     pub fn get_variable(&self, variable: &str) -> Option<Arc<ParserVariable>> {

@@ -9,21 +9,9 @@ impl Compile for Scope {
     fn compile(&self, state: &mut CompilerState) -> Vec<Instruction> {
         let mut instructions = Vec::new();
 
-        instructions.extend(
-            state.create_scope(
-                self.scope_state
-                    .get_variables()
-                    .iter()
-                    .map(|v| (v.unique_name.clone(), v.datatype.clone()))
-                    .collect(),
-            ),
-        );
-
         for statement in &self.items {
             instructions.extend(statement.compile(state));
         }
-
-        instructions.extend(state.destroy_scope());
 
         instructions
     }

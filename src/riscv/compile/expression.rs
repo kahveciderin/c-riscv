@@ -154,12 +154,11 @@ impl Compile for BinaryOp {
             }
 
             BinaryOp::Assignment(lhs, rhs) => {
+                instructions.extend(rhs.compile(state));
                 if let Expression::Variable(name) = lhs.as_ref() {
                     if let Some(variable) = state.get_variable(name) {
                         let relative_location = state.get_stack_size() - variable.address;
                         println!("Variable: {:?}, location: {relative_location}", variable);
-
-                        instructions.extend(rhs.compile(state));
 
                         instructions.push(Instruction::Sw(
                             Register::A0,
@@ -373,8 +372,8 @@ impl Compile for Expression {
             Expression::TernaryOp(op) => {
                 instructions.extend(op.condition.compile(state));
 
-                let end_of_ternary_label = unique_identifier(Some("ternary"), None);
-                let start_of_else_label = unique_identifier(Some("ternary"), None);
+                let end_of_ternary_label = unique_identifier(Some("ternary_end"), None);
+                let start_of_else_label = unique_identifier(Some("ternary_else_start"), None);
 
                 instructions.push(Instruction::Beqz(
                     Register::A0,

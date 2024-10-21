@@ -5,7 +5,7 @@ use crate::types::scope::{Scope, ScopeItem};
 use super::{
     declaration::parse_declaration,
     statement::parse_statement,
-    trivial_tokens::{parse_close_scope, parse_open_scope},
+    trivial_tokens::{parse_close_scope, parse_open_scope, parse_semicolon},
     whitespace::parse_whitespace,
     Stream,
 };
@@ -19,7 +19,7 @@ pub fn parse_statement_scope_item<'s>(input: &mut Stream<'s>) -> PResult<ScopeIt
 pub fn parse_declaration_scope_item<'s>(input: &mut Stream<'s>) -> PResult<ScopeItem> {
     parse_whitespace(input)?;
 
-    parse_declaration
+    combinator::terminated(parse_declaration, parse_semicolon)
         .map(ScopeItem::Declaration)
         .parse_next(input)
 }
@@ -41,9 +41,9 @@ pub fn parse_scope<'s>(input: &mut Stream<'s>) -> PResult<Scope> {
         .map(|v| v.0)
         .parse_next(input)?;
 
-    let scope_state = input.state.pop_scope();
+    input.state.pop_scope();
 
-    let scope = Scope { items, scope_state };
+    let scope = Scope { items };
 
     Ok(scope)
 }

@@ -14,13 +14,21 @@ use super::{
 pub fn parse_function_definition<'s>(input: &mut Stream<'s>) -> PResult<FunctionDefinition<'s>> {
     parse_whitespace(input)?;
 
-    combinator::seq!(FunctionDefinition {
-        return_type: parse_datatype,
-        name: parse_identifier,
-        _: parse_open_paren,
-        // arguments: separated(parse_identifier, parse_comma),
-        _: parse_close_paren,
-        body: parse_scope,
+    input.state.start_function_scope();
+
+    let return_type = parse_datatype(input)?;
+    let name = parse_identifier(input)?;
+
+    parse_open_paren(input)?;
+
+    parse_close_paren(input)?;
+
+    let body = parse_scope(input)?;
+
+    Ok(FunctionDefinition {
+        return_type,
+        name,
+        body,
+        scope_state: input.state.function_scope.clone(),
     })
-    .parse_next(input)
 }

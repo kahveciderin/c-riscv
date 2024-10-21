@@ -17,14 +17,24 @@ impl Compile for FunctionDefinition<'_> {
         instructions.push(Instruction::Symbol("globl main".into()));
         instructions.push(Instruction::Label(self.name.into()));
 
-        instructions.extend(state.create_function_scope(32));
+        instructions.extend(
+            state.create_function_scope(
+                self.scope_state
+                    .get_variables()
+                    .iter()
+                    .map(|v| (v.unique_name.clone(), v.datatype.clone()))
+                    .collect(),
+            ),
+        );
+
+        instructions.push(Instruction::Comment("Function body:".to_owned()));
+
+        println!("Current compiler state: {state:#?}");
 
         let body = self.body.compile(state);
         instructions.extend(body);
 
-        instructions.push(Instruction::Comment(String::from(
-            "body finished, following is the epilogue",
-        )));
+        instructions.push(Instruction::Comment("Function epilogue".to_owned()));
 
         let implicit_return = JumpStatement::Return {
             expression: Some(Expression::Number(0)),

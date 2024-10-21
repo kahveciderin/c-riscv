@@ -1,13 +1,19 @@
+use std::sync::Arc;
+
 use crate::{
     riscv::{
-        instruction::Instruction,
-        values::{Immediate, Register, RegisterWithOffset},
+        instruction::{self, Instruction},
+        values::{Immediate, Register},
     },
-    types::statement::{IfStatement, JumpStatement, Statement},
+    types::{
+        expression::Expression,
+        scope::{Scope, ScopeItem},
+        statement::{ForInit, ForStatement, IfStatement, JumpStatement, Statement, WhileStatement},
+    },
     utils::random_name::unique_identifier,
 };
 
-use super::{Compile, CompilerState};
+use super::{declaration, expression, Compile, CompilerState};
 
 impl Compile for Statement {
     fn compile(&self, state: &mut CompilerState) -> Vec<Instruction> {
@@ -17,7 +23,85 @@ impl Compile for Statement {
             Statement::Null => Vec::new(),
             Statement::Scope { scope } => scope.compile(state),
             Statement::If { statement } => statement.compile(state),
+            Statement::While { statement } => statement.compile(state),
+            Statement::For { statement } => statement.compile(state),
         }
+    }
+}
+
+impl Compile for WhileStatement {
+    fn compile(&self, state: &mut CompilerState) -> Vec<Instruction> {
+        let mut instructions = Vec::new();
+
+        let while_start_label = self.id.clone() + "_start";
+        let while_end_label = self.id.clone() + "_end";
+
+        instructions.push(Instruction::Label(while_start_label.clone()));
+
+        instructions.extend(self.condition.compile(state));
+
+        instructions.push(Instruction::Beqz(
+            Register::A0,
+            Immediate::Label(while_end_label.clone()),
+        ));
+
+        instructions.extend(self.block.compile(state));
+
+        instructions.push(Instruction::J(Immediate::Label(while_start_label.clone())));
+
+        instructions.push(Instruction::Label(while_end_label));
+
+        instructions
+    }
+}
+
+impl Compile for ForStatement {
+    fn compile(&self, state: &mut CompilerState) -> Vec<Instruction> {
+        let init = if let Some(init) = self.init.clone() {
+            match init {
+                ForInit::Declaration(declaration) => ScopeItem::Declaration(declaration),
+                ForInit::Expression(expression) => {
+                    ScopeItem::Statement(Statement::Expression { expression })
+                }
+            }
+        } else {
+            ScopeItem::Statement(Statement::Null)
+        };
+
+        let condition = if let Some(condition) = self.condition.clone() {
+            condition
+        } else {
+            Expression::Number(1)
+        };
+
+        let update = if let Some(update) = self.increment.clone() {
+            Statement::Expression { expression: update }
+        } else {
+            Statement::Null
+        };
+
+        let inner_scope = (*self.block).clone();
+
+        Scope {
+            items: vec![
+                init,
+                ScopeItem::Statement(Statement::While {
+                    statement: WhileStatement {
+                        condition,
+                        block: Arc::new(Statement::Scope {
+                            scope: Scope {
+                                items: vec![
+                                    ScopeItem::Statement(update),
+                                    ScopeItem::Statement(inner_scope),
+                                ],
+                            },
+                        }),
+                        id: self.id.clone(),
+                    },
+                }),
+            ],
+        }
+        .compile(state)
     }
 }
 
@@ -27,8 +111,8 @@ impl Compile for IfStatement {
 
         instructions.extend(self.condition.compile(state));
 
-        let end_of_if_label = unique_identifier(Some("if"), None);
-        let start_of_else_label = unique_identifier(Some("if"), None);
+        let end_of_if_label = unique_identifier(Some("if_end"), None);
+        let start_of_else_label = unique_identifier(Some("else_start"), None);
 
         instructions.push(Instruction::Beqz(
             Register::A0,
@@ -63,6 +147,20 @@ impl Compile for JumpStatement {
                 }
 
                 instructions.extend(state.return_from_function());
+
+                instructions
+            }
+            JumpStatement::Break { id } => {
+                let mut instructions = Vec::new();
+
+                instructions.push(Instruction::J(Immediate::Label(id.clone() + "_end")));
+
+                instructions
+            }
+            JumpStatement::Continue { id } => {
+                let mut instructions = Vec::new();
+
+                instructions.push(Instruction::J(Immediate::Label(id.clone() + "_start")));
 
                 instructions
             }

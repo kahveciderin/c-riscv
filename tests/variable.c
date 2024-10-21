@@ -1,6 +1,7 @@
 int main() {
-  int hello = 3;
-  int world = 3;
-  hello = hello + world;
-  return hello;
+  int world = 5;
+  {
+    int world = 2;
+  }
+  return world;
 }
