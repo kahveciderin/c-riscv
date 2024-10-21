@@ -7,8 +7,6 @@ pub enum Instruction {
     Comment(String),
     Label(String),
     Symbol(String),
-    Push(Register),
-    Pop(Register),
 
     Sw(Register, RegisterWithOffset),
     Sd(Register, RegisterWithOffset),
@@ -65,27 +63,6 @@ impl Display for Instruction {
             Instruction::Comment(comment) => write!(f, "# {}", comment),
             Instruction::Label(label) => write!(f, "{}:", label),
             Instruction::Symbol(label) => write!(f, ".{}", label),
-            Instruction::Push(reg) => {
-                // extend the stack by 16 bytes (the stack must be 16-byte aligned)
-                Instruction::Addi(Register::Sp, Register::Sp, (-16).into()).fmt(f)?;
-
-                "\n".fmt(f)?;
-
-                // store the register value at the top of the stack
-                Instruction::Sd(reg.clone(), RegisterWithOffset(0.into(), Register::Sp)).fmt(f)?;
-                Ok(())
-            }
-            Instruction::Pop(reg) => {
-                // load the register value from the top of the stack
-                Instruction::Ld(reg.clone(), RegisterWithOffset(0.into(), Register::Sp)).fmt(f)?;
-
-                "\n".fmt(f)?;
-
-                // shrink the stack by 16 bytes
-                Instruction::Addi(Register::Sp, Register::Sp, 16.into()).fmt(f)?;
-                Ok(())
-            }
-
             Instruction::J(imm) => write!(f, "j {}", imm), // todo: remove this pseudo-instruction
             Instruction::Addi(rd, rs1, imm) => write!(f, "addi {}, {}, {}", rd, rs1, imm),
             Instruction::Add(rd, rs1, rs2) => write!(f, "add {}, {}, {}", rd, rs1, rs2),

@@ -44,8 +44,7 @@ pub fn parse_variable_expression<'s>(input: &mut Stream<'s>) -> PResult<Expressi
     if let Some(variable) = input.state.get_variable(&identifier) {
         Ok(Expression::Variable(variable.unique_name.clone()))
     } else {
-        // this only works because we first check declarations before expressions
-        return Err(winnow::error::ErrMode::Cut(
+        return Err(winnow::error::ErrMode::Backtrack(
             winnow::error::ContextError::new(),
         ));
     }

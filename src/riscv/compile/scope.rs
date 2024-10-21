@@ -19,13 +19,10 @@ impl Compile for Scope {
             ),
         );
 
-        println!("compiler state: {:#?}", state);
-
         for statement in &self.items {
             instructions.extend(statement.compile(state));
         }
 
-        // todo: find a way to do the cleanup after a return / break / continue etc. as well (not destroying the scope though)
         instructions.extend(state.destroy_scope());
 
         instructions
