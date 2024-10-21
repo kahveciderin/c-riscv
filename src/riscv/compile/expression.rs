@@ -47,6 +47,16 @@ impl Compile for UnaryOp {
 
                 instructions.extend(equivalent.compile(state));
             }
+            UnaryOp::PostfixDecrement(expression) => {
+                let equivalent = UnaryOp::PrefixDecrement(expression.clone());
+                instructions.extend(equivalent.compile(state));
+                instructions.push(Instruction::Addi(Register::A0, Register::A0, 1.into()));
+            }
+            UnaryOp::PostfixIncrement(expression) => {
+                let equivalent = UnaryOp::PrefixIncrement(expression.clone());
+                instructions.extend(equivalent.compile(state));
+                instructions.push(Instruction::Addi(Register::A0, Register::A0, (-1).into()));
+            }
         };
 
         instructions

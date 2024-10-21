@@ -24,16 +24,45 @@ pub fn parse_expression<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
     parse_binary_operation.parse_next(input)
 }
 
-pub fn parse_factor<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
+pub fn parse_postfix_operator<'s>(input: &'s mut Stream) -> PResult<&'s str> {
     parse_whitespace(input)?;
 
-    combinator::alt((
+    combinator::alt((parse_double_plus, parse_double_minus)).parse_next(input)
+}
+
+pub fn parse_term<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
+    parse_whitespace(input)?;
+
+    let expression = combinator::alt((
         parse_number_expression,
         parse_variable_expression,
         parse_paren_expression,
-        parse_unary_expression,
     ))
-    .parse_next(input)
+    .parse_next(input)?;
+
+    let postfix_operator = parse_postfix_operator(input);
+
+    if let Ok(postfix) = postfix_operator {
+        return match postfix {
+            "++" => Ok(Expression::UnaryOp(UnaryOp::PostfixIncrement(Arc::new(
+                expression,
+            )))),
+            "--" => Ok(Expression::UnaryOp(UnaryOp::PostfixDecrement(Arc::new(
+                expression,
+            )))),
+            _ => Err(winnow::error::ErrMode::Backtrack(
+                winnow::error::ContextError::new(),
+            )),
+        };
+    }
+
+    Ok(expression)
+}
+
+pub fn parse_factor<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
+    parse_whitespace(input)?;
+
+    combinator::alt((parse_term, parse_unary_expression)).parse_next(input)
 }
 
 pub fn parse_variable_expression<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
