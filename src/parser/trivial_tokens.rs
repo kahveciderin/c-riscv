@@ -158,3 +158,11 @@ pub fn parse_caret_equals<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
 pub fn parse_pipe_equals<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
     parse_multiple_chars(input, "|=")
 }
+
+pub fn parse_question_mark<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "?")
+}
+
+pub fn parse_colon<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, ":")
+}

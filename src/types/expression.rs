@@ -5,6 +5,7 @@ pub enum Expression {
     Number(i32),
     UnaryOp(UnaryOp),
     BinaryOp(BinaryOp),
+    TernaryOp(TernaryOp),
     Variable(String),
 }
 
@@ -47,4 +48,11 @@ pub enum BinaryOp {
     AssignmentBitwiseAnd(Arc<Expression>, Arc<Expression>),
     AssignmentBitwiseXor(Arc<Expression>, Arc<Expression>),
     AssignmentBitwiseOr(Arc<Expression>, Arc<Expression>),
+}
+
+#[derive(Debug, Clone)]
+pub struct TernaryOp {
+    pub condition: Arc<Expression>,
+    pub then_expr: Arc<Expression>,
+    pub else_expr: Arc<Expression>,
 }

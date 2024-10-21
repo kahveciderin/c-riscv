@@ -370,6 +370,29 @@ impl Compile for Expression {
                     todo!("Variable not found");
                 }
             }
+            Expression::TernaryOp(op) => {
+                instructions.extend(op.condition.compile(state));
+
+                let end_of_ternary_label = unique_identifier(Some("ternary"), None);
+                let start_of_else_label = unique_identifier(Some("ternary"), None);
+
+                instructions.push(Instruction::Beqz(
+                    Register::A0,
+                    Immediate::Label(start_of_else_label.clone()),
+                ));
+
+                instructions.extend(op.then_expr.compile(state));
+
+                instructions.push(Instruction::J(Immediate::Label(
+                    end_of_ternary_label.clone(),
+                )));
+
+                instructions.push(Instruction::Label(start_of_else_label));
+
+                instructions.extend(op.else_expr.compile(state));
+
+                instructions.push(Instruction::Label(end_of_ternary_label));
+            }
         };
 
         instructions

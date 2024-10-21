@@ -9,12 +9,13 @@ use crate::{
             parse_double_less_than_equals, parse_equals, parse_minus_equals, parse_percent_equals,
             parse_pipe_equals, parse_plus_equals, parse_slash_equals, parse_star_equals,
         },
-        whitespace::parse_whitespace, Stream,
+        whitespace::parse_whitespace,
+        Stream,
     },
     types::expression::{BinaryOp, Expression},
 };
 
-use super::{level_12::parse_level_12_expression, HalfBinaryOp};
+use super::{level_13::parse_level_13_ternary_expression, HalfBinaryOp};
 
 pub fn parse_level_14_binary_operator<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
     parse_whitespace(input)?;
@@ -74,7 +75,7 @@ fn parse_half_level_14_operation<'s>(input: &mut Stream<'s>) -> PResult<HalfBina
 pub fn parse_level_14_expression<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
     parse_whitespace(input)?;
 
-    let lhs = parse_level_12_expression(input)?;
+    let lhs = parse_level_13_ternary_expression(input)?;
     let half_operation = parse_half_level_14_operation(input);
 
     if let Ok(half_operation) = half_operation {
