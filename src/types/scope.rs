@@ -1,5 +1,3 @@
-use crate::parser::ParserScopeState;
-
 use super::{declaration::Declaration, statement::Statement};
 
 #[derive(Debug, Clone)]

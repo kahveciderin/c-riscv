@@ -9,7 +9,7 @@ use crate::types::statement::{
 use super::{
     declaration::parse_declaration,
     expression::{parse_expression, parse_optional_expression},
-    identifier::{self, parse_identifier},
+    identifier::parse_identifier,
     scope::parse_scope,
     trivial_tokens::{parse_close_paren, parse_open_paren, parse_semicolon},
     whitespace::parse_whitespace,

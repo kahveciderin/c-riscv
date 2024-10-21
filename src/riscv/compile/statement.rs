@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     riscv::{
-        instruction::{self, Instruction},
+        instruction::Instruction,
         values::{Immediate, Register},
     },
     types::{
@@ -13,7 +13,7 @@ use crate::{
     utils::random_name::unique_identifier,
 };
 
-use super::{declaration, expression, Compile, CompilerState};
+use super::{Compile, CompilerState};
 
 impl Compile for Statement {
     fn compile(&self, state: &mut CompilerState) -> Vec<Instruction> {

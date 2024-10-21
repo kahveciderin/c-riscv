@@ -4,3 +4,4 @@ pub mod scope;
 pub mod statement;
 pub mod declaration;
 pub mod datatype;
+pub mod program;

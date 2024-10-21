@@ -1,8 +1,5 @@
 use crate::{
-    riscv::{
-        instruction::Instruction,
-        values::{Register, RegisterWithOffset},
-    },
+    riscv::instruction::Instruction,
     types::{
         expression::Expression, function_definition::FunctionDefinition, statement::JumpStatement,
     },
@@ -14,7 +11,7 @@ impl Compile for FunctionDefinition<'_> {
     fn compile(&self, state: &mut CompilerState) -> Vec<Instruction> {
         let mut instructions = vec![];
 
-        instructions.push(Instruction::Symbol("globl main".into()));
+        instructions.push(Instruction::Symbol("globl ".to_string() + &self.name));
         instructions.push(Instruction::Label(self.name.into()));
 
         instructions.extend(

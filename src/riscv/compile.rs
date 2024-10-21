@@ -1,5 +1,5 @@
 use crate::{
-    types::datatype::{self, Datatype},
+    types::{datatype::Datatype, program::Program},
     utils::nearest_multiple::nearest_multiple,
 };
 
@@ -249,3 +249,15 @@ mod expression;
 mod function_definition;
 mod scope;
 mod statement;
+
+impl Compile for Program<'_> {
+    fn compile(&self, state: &mut CompilerState) -> Vec<Instruction> {
+        let mut instructions = Vec::new();
+
+        for function in &self.functions {
+            instructions.extend(function.compile(state));
+        }
+
+        instructions
+    }
+}

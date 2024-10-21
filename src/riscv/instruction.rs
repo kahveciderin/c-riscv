@@ -115,7 +115,7 @@ impl Display for Instruction {
 
                 "\n".fmt(f)?;
 
-                Instruction::Seqz(rd.clone(), rd.clone()).fmt(f);
+                Instruction::Seqz(rd.clone(), rd.clone()).fmt(f)?;
 
                 Ok(())
             }

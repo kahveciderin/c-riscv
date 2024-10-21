@@ -1,4 +1,4 @@
-use winnow::{combinator, error, PResult, Parser};
+use winnow::{combinator, PResult, Parser};
 
 use super::{whitespace::parse_whitespace, Stream};
 

@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use function_definition::parse_function_definition;
 use winnow::{PResult, Parser, Stateful};
 
 use crate::{
@@ -13,6 +12,7 @@ mod expression;
 mod function_definition;
 mod identifier;
 mod number;
+mod program;
 mod scope;
 mod statement;
 mod trivial_tokens;
@@ -55,10 +55,6 @@ impl ParserScopeState {
 
     pub fn get_variable(&self, variable: &str) -> Option<Arc<ParserVariable>> {
         self.variables.iter().find(|v| v.name == variable).cloned()
-    }
-
-    pub fn get_size(&self) -> usize {
-        self.variables.iter().map(|v| v.datatype.size()).sum()
     }
 
     pub fn get_variables(&self) -> Vec<Arc<ParserVariable>> {
@@ -114,10 +110,6 @@ impl ParserState {
         self.scope.last_mut().unwrap()
     }
 
-    pub fn get_current_scope_variable_count(&self) -> usize {
-        self.scope.last().unwrap().variables.len()
-    }
-
     pub fn add_variable(&mut self, variable: String, datatype: Datatype) -> Arc<ParserVariable> {
         let variable = self.get_current_scope().add_variable(variable, datatype);
         self.function_scope.insert_variable(variable.clone());
@@ -144,7 +136,7 @@ pub fn parse_program<'s>(input: &'s str) -> PResult<impl Compile + 's> {
         state: ParserState::new(),
     };
 
-    let ast = parse_function_definition.parse_next(&mut stream);
+    let ast = program::parse_program.parse_next(&mut stream);
 
     println!("Generated AST: {:#?}", ast);
 
