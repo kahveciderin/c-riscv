@@ -40,7 +40,7 @@ pub fn parse_function_definition<'s>(input: &mut Stream<'s>) -> PResult<Function
             .map(|v| v.0)
             .parse_next(input)?;
 
-    input.state.start_function_scope();
+    input.state.start_function_scope(name.to_string());
 
     arguments.iter().for_each(|arg| {
         input.state.add_raw_name_variable(

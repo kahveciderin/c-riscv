@@ -144,7 +144,7 @@ impl CompilerState {
         instructions.extend(self.decrease_stack(32));
 
         // return
-        instructions.push(Instruction::Ret);
+        instructions.push(Instruction::RetP);
 
         instructions.push(Instruction::Comment(String::from("return finished")));
 

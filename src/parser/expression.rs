@@ -3,8 +3,8 @@ use std::sync::Arc;
 use winnow::{combinator, PResult, Parser};
 
 use crate::{
-    parser::identifier::parse_identifier,
-    types::expression::{Expression, UnaryOp},
+    parser::{identifier::parse_identifier, trivial_tokens::parse_comma},
+    types::expression::{Call, Expression, UnaryOp},
 };
 
 use super::{
@@ -15,7 +15,7 @@ use super::{
         parse_open_paren, parse_plus, parse_tilda,
     },
     whitespace::parse_whitespace,
-    Stream,
+    ParserSymbol, Stream,
 };
 
 pub fn parse_expression<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
@@ -27,20 +27,22 @@ pub fn parse_expression<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
 pub fn parse_postfix_operator<'s>(input: &'s mut Stream) -> PResult<&'s str> {
     parse_whitespace(input)?;
 
-    combinator::alt((parse_double_plus, parse_double_minus)).parse_next(input)
+    combinator::alt((parse_double_plus, parse_double_minus, parse_open_paren)).parse_next(input)
 }
 
 pub fn parse_term<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
     parse_whitespace(input)?;
 
     let expression = combinator::alt((
-        parse_number_expression,
         parse_variable_expression,
+        parse_number_expression,
         parse_paren_expression,
     ))
     .parse_next(input)?;
 
     let postfix_operator = parse_postfix_operator(input);
+
+    println!("postfix operator {postfix_operator:?}");
 
     if let Ok(postfix) = postfix_operator {
         return match postfix {
@@ -50,6 +52,17 @@ pub fn parse_term<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
             "--" => Ok(Expression::UnaryOp(UnaryOp::PostfixDecrement(Arc::new(
                 expression,
             )))),
+            "(" => {
+                let arguments = combinator::separated(0.., parse_expression, parse_comma)
+                    .parse_next(input)?;
+
+                parse_close_paren(input)?;
+
+                Ok(Expression::Call(Call {
+                    expression: Arc::new(expression),
+                    arguments,
+                }))
+            }
             _ => Err(winnow::error::ErrMode::Backtrack(
                 winnow::error::ContextError::new(),
             )),
@@ -71,8 +84,15 @@ pub fn parse_variable_expression<'s>(input: &mut Stream<'s>) -> PResult<Expressi
     let identifier = parse_identifier(input)?;
     let identifier = identifier.to_string();
 
-    if let Some(variable) = input.state.get_variable(&identifier) {
-        Ok(Expression::Variable(variable.unique_name.clone()))
+    let symbol = input.state.get_symbol(&identifier);
+
+    if let Some(symbol) = symbol {
+        match symbol {
+            ParserSymbol::Function(function) => Ok(Expression::FunctionSymbol(function.name.clone())),
+            ParserSymbol::Variable(variable) => {
+                Ok(Expression::Variable(variable.unique_name.clone()))
+            }
+        }
     } else {
         return Err(winnow::error::ErrMode::Backtrack(
             winnow::error::ContextError::new(),

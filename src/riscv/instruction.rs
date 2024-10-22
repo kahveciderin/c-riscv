@@ -8,14 +8,6 @@ pub enum Instruction {
     Label(String),
     Symbol(String),
 
-    Sw(Register, RegisterWithOffset),
-    Sd(Register, RegisterWithOffset),
-    Li(Register, Immediate),
-    Lw(Register, RegisterWithOffset),
-    Ld(Register, RegisterWithOffset),
-    Jal(Register, Immediate),
-    Jalr(Register, RegisterWithOffset),
-
     // arithmetic
     Add(Register, Register, Register),
     Addi(Register, Register, Immediate),
@@ -27,7 +19,7 @@ pub enum Instruction {
 
     // bitwise
     And(Register, Register, Register),
-    Not(Register, Register),
+    NotP(Register, Register),
     Or(Register, Register, Register),
     Xor(Register, Register, Register),
     Xori(Register, Register, Immediate),
@@ -36,23 +28,35 @@ pub enum Instruction {
     Sll(Register, Register, Register),
     Srl(Register, Register, Register),
 
+    // load immediate
+    LiP(Register, Immediate),
+
+    // load and store
+    Lw(Register, RegisterWithOffset),
+    Ld(Register, RegisterWithOffset),
+    LaP(Register, Immediate),
+    Sw(Register, RegisterWithOffset),
+    Sd(Register, RegisterWithOffset),
+
     // jump
-    J(Immediate),
-    Call(Immediate),
-    Ret,
+    JP(Immediate),
+    Jal(Register, Immediate),
+    Jalr(Register, RegisterWithOffset),
+    CallP(Immediate),
+    RetP,
 
     // branch
     Beq(Register, Register, Immediate),
-    Beqz(Register, Immediate),
+    BeqzP(Register, Immediate),
     Bne(Register, Register, Immediate),
-    Bnez(Register, Immediate),
+    BnezP(Register, Immediate),
 
     // set
     Sltu(Register, Register, Register),
     Sltiu(Register, Register, Immediate),
-    Seqz(Register, Register),
-    Snez(Register, Register),
-    Seq(Register, Register, Register),
+    SeqzP(Register, Register),
+    SnezP(Register, Register),
+    SeqP(Register, Register, Register),
 }
 
 // pseudoinstructions list: https://riscv.org/wp-content/uploads/2019/12/riscv-spec-20191213.pdf (page 139, Table 25.2)
@@ -63,7 +67,7 @@ impl Display for Instruction {
             Instruction::Comment(comment) => write!(f, "# {}", comment),
             Instruction::Label(label) => write!(f, "{}:", label),
             Instruction::Symbol(label) => write!(f, ".{}", label),
-            Instruction::J(imm) => write!(f, "j {}", imm), // todo: remove this pseudo-instruction
+            Instruction::JP(imm) => write!(f, "j {}", imm),
             Instruction::Addi(rd, rs1, imm) => write!(f, "addi {}, {}, {}", rd, rs1, imm),
             Instruction::Add(rd, rs1, rs2) => write!(f, "add {}, {}, {}", rd, rs1, rs2),
             Instruction::Sll(rd, rs1, rs2) => write!(f, "sll {}, {}, {}", rd, rs1, rs2),
@@ -76,7 +80,7 @@ impl Display for Instruction {
             Instruction::Rem(rd, rs1, rs2) => write!(f, "rem {}, {}, {}", rd, rs1, rs2),
             Instruction::Sw(rs1, rs2) => write!(f, "sw {}, {}", rs1, rs2),
             Instruction::Sd(rs1, rs2) => write!(f, "sd {}, {}", rs1, rs2),
-            Instruction::Li(rd, imm) => write!(f, "li {}, {}", rd, imm),
+            Instruction::LiP(rd, imm) => write!(f, "li {}, {}", rd, imm),
             Instruction::Lw(rd, rs1) => write!(f, "lw {}, {}", rd, rs1),
             Instruction::Ld(rd, rs1) => write!(f, "ld {}, {}", rd, rs1),
             Instruction::Neg(rd, rs1) => write!(f, "neg {}, {}", rd, rs1),
@@ -88,34 +92,20 @@ impl Display for Instruction {
             Instruction::Bne(rs1, rs2, imm) => write!(f, "bne {}, {}, {}", rs1, rs2, imm),
             Instruction::Sltu(rd, rs1, imm) => write!(f, "sltu {}, {}, {}", rd, rs1, imm),
             Instruction::Sltiu(rd, rs1, imm) => write!(f, "sltiu {}, {}, {}", rd, rs1, imm),
-
-            // todo: far calls (https://projectf.io/posts/riscv-jump-function/#far-calls)
-            Instruction::Call(symbol) => Instruction::Jal(Register::Ra, (*symbol).clone()).fmt(f),
-
-            Instruction::Ret => {
-                Instruction::Jalr(Register::Zero, RegisterWithOffset(0.into(), Register::Ra)).fmt(f)
-            }
-            Instruction::Not(rd, rs1) => {
-                Instruction::Xori(rd.clone(), rs1.clone(), (-1).into()).fmt(f)
-            }
-            Instruction::Beqz(rs1, imm) => {
-                Instruction::Beq(rs1.clone(), Register::Zero, imm.clone()).fmt(f)
-            }
-            Instruction::Bnez(rs1, imm) => {
-                Instruction::Bne(rs1.clone(), Register::Zero, imm.clone()).fmt(f)
-            }
-            Instruction::Seqz(rd, rs1) => {
-                Instruction::Sltiu(rd.clone(), rs1.clone(), 1.into()).fmt(f)
-            }
-            Instruction::Snez(rd, rs1) => {
-                Instruction::Sltu(rd.clone(), Register::Zero, rs1.clone()).fmt(f)
-            }
-            Instruction::Seq(rd, rs1, rs2) => {
+            Instruction::CallP(symbol) => write!(f, "call {}", symbol),
+            Instruction::RetP => write!(f, "ret"),
+            Instruction::NotP(rd, rs1) => write!(f, "not {}, {}", rd, rs1),
+            Instruction::BeqzP(rs1, imm) => write!(f, "beqz {}, {}", rs1, imm),
+            Instruction::BnezP(rs1, imm) => write!(f, "bnez {}, {}", rs1, imm),
+            Instruction::SeqzP(rd, rs1) => write!(f, "seqz {}, {}", rd, rs1),
+            Instruction::SnezP(rd, rs1) => write!(f, "snez {}, {}", rd, rs1),
+            Instruction::LaP(rd, imm) => write!(f, "la {}, {}", rd, imm),
+            Instruction::SeqP(rd, rs1, rs2) => {
                 Instruction::Xor(rd.clone(), rs1.clone(), rs2.clone()).fmt(f)?;
 
                 "\n".fmt(f)?;
 
-                Instruction::Seqz(rd.clone(), rd.clone()).fmt(f)?;
+                Instruction::SeqzP(rd.clone(), rd.clone()).fmt(f)?;
 
                 Ok(())
             }

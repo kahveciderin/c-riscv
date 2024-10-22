@@ -1,3 +1,6 @@
-int main() { return 0; }
+int foo() { return 123; }
 
-int foo(int argument) { return argument + 1; }
+int main() {
+  int a = foo();
+  return a;
+}

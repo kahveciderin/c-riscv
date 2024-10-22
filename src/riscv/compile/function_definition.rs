@@ -26,8 +26,6 @@ impl Compile for FunctionDefinition<'_> {
 
         instructions.push(Instruction::Comment("Function body:".to_owned()));
 
-        println!("Current compiler state: {state:#?}");
-
         let body = self.body.compile(state);
         instructions.extend(body);
 

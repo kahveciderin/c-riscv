@@ -28,16 +28,27 @@ pub struct ParserVariable {
 }
 
 #[derive(Debug, Clone)]
+pub struct ParserStaticSymbol {
+    pub name: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum ParserSymbol {
+    Variable(ParserVariable),
+    Function(ParserStaticSymbol),
+}
+
+#[derive(Debug, Clone)]
 pub struct ParserScopeState {
-    variables: Vec<Arc<ParserVariable>>,
+    symbols: Vec<Arc<ParserSymbol>>,
 }
 
 impl ParserScopeState {
     pub fn new() -> Self {
-        ParserScopeState { variables: vec![] }
+        ParserScopeState { symbols: vec![] }
     }
 
-    pub fn add_variable(&mut self, name: String, datatype: Datatype) -> Arc<ParserVariable> {
+    pub fn add_variable(&mut self, name: String, datatype: Datatype) -> ParserVariable {
         let unique_name = unique_identifier(Some(name.as_str()), None);
         self.add_raw_name_variable(name, unique_name, datatype)
     }
@@ -47,28 +58,42 @@ impl ParserScopeState {
         name: String,
         raw_name: String,
         datatype: Datatype,
-    ) -> Arc<ParserVariable> {
+    ) -> ParserVariable {
         let variable = ParserVariable {
             name,
             unique_name: raw_name,
             datatype,
         };
-        let variable = Arc::new(variable);
         self.insert_variable(variable.clone());
         variable
     }
 
-    pub fn insert_variable(&mut self, variable: Arc<ParserVariable>) {
-        self.variables.push(variable);
+    pub fn insert_variable(&mut self, variable: ParserVariable) {
+        self.symbols
+            .push(Arc::new(ParserSymbol::Variable(variable)));
     }
 
-    pub fn get_variable(&self, variable: &str) -> Option<Arc<ParserVariable>> {
-        self.variables.iter().find(|v| v.name == variable).cloned()
+    pub fn get_symbol(&self, variable: &str) -> Option<Arc<ParserSymbol>> {
+        self.symbols
+            .iter()
+            .find(|v| {
+                return match v.as_ref() {
+                    ParserSymbol::Variable(v) => v.name == variable,
+                    ParserSymbol::Function(_) => false,
+                };
+            })
+            .cloned()
     }
 
-    pub fn get_variables(&self) -> Vec<Arc<ParserVariable>> {
+    pub fn get_variables(&self) -> Vec<ParserVariable> {
         // todo: figure out another way
-        self.variables.clone()
+        self.symbols
+            .iter()
+            .filter_map(|s| match s.as_ref() {
+                ParserSymbol::Variable(v) => Some(v.clone()),
+                ParserSymbol::Function(_) => None,
+            })
+            .collect()
     }
 }
 
@@ -81,6 +106,7 @@ pub struct LoopState {
 pub struct ParserState {
     scope: Vec<ParserScopeState>,
     function_scope: ParserScopeState,
+    static_symbols: Vec<ParserStaticSymbol>,
     loop_state: Vec<LoopState>,
 }
 
@@ -90,6 +116,7 @@ impl ParserState {
             scope: vec![ParserScopeState::new()],
             function_scope: ParserScopeState::new(),
             loop_state: vec![],
+            static_symbols: vec![],
         }
     }
 
@@ -119,7 +146,7 @@ impl ParserState {
         self.scope.last_mut().unwrap()
     }
 
-    pub fn add_variable(&mut self, variable: String, datatype: Datatype) -> Arc<ParserVariable> {
+    pub fn add_variable(&mut self, variable: String, datatype: Datatype) -> ParserVariable {
         let variable = self.get_current_scope().add_variable(variable, datatype);
         self.function_scope.insert_variable(variable.clone());
         variable
@@ -130,7 +157,7 @@ impl ParserState {
         variable: String,
         raw_name: String,
         datatype: Datatype,
-    ) -> Arc<ParserVariable> {
+    ) -> ParserVariable {
         let variable = self
             .get_current_scope()
             .add_raw_name_variable(variable, raw_name, datatype);
@@ -138,15 +165,29 @@ impl ParserState {
         variable
     }
 
-    pub fn start_function_scope(&mut self) {
+    pub fn add_static_symbol(&mut self, symbol: ParserStaticSymbol) {
+        self.static_symbols.push(symbol);
+    }
+
+    pub fn start_function_scope(&mut self, name: String) {
+        self.add_static_symbol(ParserStaticSymbol { name });
         self.function_scope = ParserScopeState::new();
     }
 
-    pub fn get_variable(&self, variable: &str) -> Option<Arc<ParserVariable>> {
-        self.scope
+    pub fn get_symbol(&self, symbol: &str) -> Option<ParserSymbol> {
+        if let Some(symbol) = self
+            .scope
             .iter()
             .rev()
-            .find_map(|s| s.get_variable(variable))
+            .find_map(|s| s.get_symbol(symbol))
+            .map(|s| s.as_ref().clone())
+        {
+            return Some(symbol);
+        } else if let Some(symbol) = self.static_symbols.iter().find(|s| s.name == symbol) {
+            return Some(ParserSymbol::Function(symbol.clone()));
+        } else {
+            None
+        }
     }
 }
 

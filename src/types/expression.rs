@@ -7,6 +7,14 @@ pub enum Expression {
     BinaryOp(BinaryOp),
     TernaryOp(TernaryOp),
     Variable(String),
+    FunctionSymbol(String),
+    Call(Call),
+}
+
+#[derive(Debug, Clone)]
+pub struct Call {
+    pub expression: Arc<Expression>,
+    pub arguments: Vec<Expression>,
 }
 
 #[derive(Debug, Clone)]

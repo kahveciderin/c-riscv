@@ -40,14 +40,14 @@ impl Compile for WhileStatement {
 
         instructions.extend(self.condition.compile(state));
 
-        instructions.push(Instruction::Beqz(
+        instructions.push(Instruction::BeqzP(
             Register::A0,
             Immediate::Label(while_end_label.clone()),
         ));
 
         instructions.extend(self.block.compile(state));
 
-        instructions.push(Instruction::J(Immediate::Label(while_start_label.clone())));
+        instructions.push(Instruction::JP(Immediate::Label(while_start_label.clone())));
 
         instructions.push(Instruction::Label(while_end_label));
 
@@ -114,14 +114,14 @@ impl Compile for IfStatement {
         let end_of_if_label = unique_identifier(Some("if_end"), None);
         let start_of_else_label = unique_identifier(Some("else_start"), None);
 
-        instructions.push(Instruction::Beqz(
+        instructions.push(Instruction::BeqzP(
             Register::A0,
             Immediate::Label(start_of_else_label.clone()),
         ));
 
         instructions.extend(self.then_block.compile(state));
 
-        instructions.push(Instruction::J(Immediate::Label(end_of_if_label.clone())));
+        instructions.push(Instruction::JP(Immediate::Label(end_of_if_label.clone())));
 
         instructions.push(Instruction::Label(start_of_else_label));
 
@@ -153,14 +153,14 @@ impl Compile for JumpStatement {
             JumpStatement::Break { id } => {
                 let mut instructions = Vec::new();
 
-                instructions.push(Instruction::J(Immediate::Label(id.clone() + "_end")));
+                instructions.push(Instruction::JP(Immediate::Label(id.clone() + "_end")));
 
                 instructions
             }
             JumpStatement::Continue { id } => {
                 let mut instructions = Vec::new();
 
-                instructions.push(Instruction::J(Immediate::Label(id.clone() + "_start")));
+                instructions.push(Instruction::JP(Immediate::Label(id.clone() + "_start")));
 
                 instructions
             }

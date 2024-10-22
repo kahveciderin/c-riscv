@@ -6,7 +6,7 @@ use crate::{
         values::{Immediate, Register, RegisterWithOffset},
     },
     types::expression::{BinaryOp, Expression, UnaryOp},
-    utils::random_name::unique_identifier,
+    utils::{nearest_multiple::nearest_multiple, random_name::unique_identifier},
 };
 
 use super::{Compile, CompilerState};
@@ -25,11 +25,11 @@ impl Compile for UnaryOp {
             }
             UnaryOp::LogicalNot(expression) => {
                 instructions.extend(expression.compile(state));
-                instructions.push(Instruction::Seqz(Register::A0, Register::A0));
+                instructions.push(Instruction::SeqzP(Register::A0, Register::A0));
             }
             UnaryOp::BitwiseNot(expression) => {
                 instructions.extend(expression.compile(state));
-                instructions.push(Instruction::Not(Register::A0, Register::A0));
+                instructions.push(Instruction::NotP(Register::A0, Register::A0));
             }
             UnaryOp::PrefixIncrement(expression) => {
                 let equivalent = BinaryOp::AssignmentAddition(
@@ -99,7 +99,7 @@ impl Compile for BinaryOp {
                 instructions.extend(lhs.compile(state));
 
                 // if lhs is false, short circuit
-                instructions.push(Instruction::Beqz(
+                instructions.push(Instruction::BeqzP(
                     Register::A0,
                     Immediate::Label(short_circuit_label.clone()),
                 ));
@@ -108,12 +108,12 @@ impl Compile for BinaryOp {
                 instructions.extend(rhs.compile(state));
 
                 // if rhs is false, jump to the short circuit label
-                instructions.push(Instruction::Beqz(
+                instructions.push(Instruction::BeqzP(
                     Register::A0,
                     Immediate::Label(short_circuit_label.clone()),
                 ));
 
-                instructions.push(Instruction::Li(Register::A0, 1.into()));
+                instructions.push(Instruction::LiP(Register::A0, 1.into()));
                 instructions.push(Instruction::Label(short_circuit_label));
             }
             BinaryOp::LogicalOr(lhs, rhs) => {
@@ -124,7 +124,7 @@ impl Compile for BinaryOp {
                 instructions.extend(lhs.compile(state));
 
                 // if lhs is true, short circuit
-                instructions.push(Instruction::Bnez(
+                instructions.push(Instruction::BnezP(
                     Register::A0,
                     Immediate::Label(short_circuit_label_1.clone()),
                 ));
@@ -133,19 +133,19 @@ impl Compile for BinaryOp {
                 instructions.extend(rhs.compile(state));
 
                 // if rhs is true, jump to the short circuit label
-                instructions.push(Instruction::Bnez(
+                instructions.push(Instruction::BnezP(
                     Register::A0,
                     Immediate::Label(short_circuit_label_1.clone()),
                 ));
 
-                instructions.push(Instruction::Li(Register::A0, 0.into()));
+                instructions.push(Instruction::LiP(Register::A0, 0.into()));
 
-                instructions.push(Instruction::J(Immediate::Label(
+                instructions.push(Instruction::JP(Immediate::Label(
                     short_circuit_label_2.clone(),
                 )));
 
                 instructions.push(Instruction::Label(short_circuit_label_1));
-                instructions.push(Instruction::Li(Register::A0, 1.into()));
+                instructions.push(Instruction::LiP(Register::A0, 1.into()));
                 instructions.push(Instruction::Label(short_circuit_label_2));
             }
             BinaryOp::NotEquals(lhs, rhs) => {
@@ -356,7 +356,7 @@ impl Compile for BinaryOp {
                         },
 
                         Equals: {
-                            instructions.push(Instruction::Seq(Register::A0, Register::A0, Register::A1));
+                            instructions.push(Instruction::SeqP(Register::A0, Register::A0, Register::A1));
                         }
                     ]
                 );
@@ -373,13 +373,19 @@ impl Compile for Expression {
 
         match self {
             Expression::Number(n) => {
-                instructions.push(Instruction::Li(Register::A0, (*n).into()));
+                instructions.push(Instruction::LiP(Register::A0, (*n).into()));
             }
             Expression::UnaryOp(op) => {
                 instructions.extend(op.compile(state));
             }
             Expression::BinaryOp(op) => {
                 instructions.extend(op.compile(state));
+            }
+            Expression::FunctionSymbol(name) => {
+                instructions.push(Instruction::LaP(
+                    Register::A0,
+                    Immediate::Label(name.clone()),
+                ));
             }
             Expression::Variable(name) => {
                 if let Some(variable) = state.get_variable(name) {
@@ -401,14 +407,14 @@ impl Compile for Expression {
                 let end_of_ternary_label = unique_identifier(Some("ternary_end"), None);
                 let start_of_else_label = unique_identifier(Some("ternary_else_start"), None);
 
-                instructions.push(Instruction::Beqz(
+                instructions.push(Instruction::BeqzP(
                     Register::A0,
                     Immediate::Label(start_of_else_label.clone()),
                 ));
 
                 instructions.extend(op.then_expr.compile(state));
 
-                instructions.push(Instruction::J(Immediate::Label(
+                instructions.push(Instruction::JP(Immediate::Label(
                     end_of_ternary_label.clone(),
                 )));
 
@@ -417,6 +423,62 @@ impl Compile for Expression {
                 instructions.extend(op.else_expr.compile(state));
 
                 instructions.push(Instruction::Label(end_of_ternary_label));
+            }
+            Expression::Call(call) => {
+                let argument_count = call.arguments.len() as u32;
+
+                // todo: dynamic size
+                let stack_increase = if argument_count > 8 {
+                    nearest_multiple(argument_count * 4, 16) as usize
+                } else {
+                    0
+                };
+
+                instructions.extend(state.expand_stack(stack_increase));
+
+                // riscv integer calling convention states that the first 8 arguments
+                // should reside in a0-a7. If there are more than 8 arguments, the
+                // remaining arguments are allowed to leak into the stack
+
+                instructions.extend(call.expression.compile(state));
+                instructions.push(Instruction::Add(Register::T0, Register::A0, Register::Zero));
+
+                let mut current_address = 0;
+                let mut current_argument_count = 0;
+                for arg in &call.arguments {
+                    instructions.extend(arg.compile(state));
+
+                    if current_argument_count > 8 {
+                        instructions.push(Instruction::Sd(
+                            Register::A0,
+                            RegisterWithOffset(current_address.into(), Register::Sp),
+                        ));
+                    } else {
+                        instructions.push(match current_argument_count {
+                            0 => Instruction::Add(Register::A0, Register::A0, Register::Zero), // <- this is essentially a nop
+                            1 => Instruction::Add(Register::A1, Register::A0, Register::Zero),
+                            2 => Instruction::Add(Register::A2, Register::A0, Register::Zero),
+                            3 => Instruction::Add(Register::A3, Register::A0, Register::Zero),
+                            4 => Instruction::Add(Register::A4, Register::A0, Register::Zero),
+                            5 => Instruction::Add(Register::A5, Register::A0, Register::Zero),
+                            6 => Instruction::Add(Register::A6, Register::A0, Register::Zero),
+                            7 => Instruction::Add(Register::A7, Register::A0, Register::Zero),
+                            _ => unreachable!(),
+                        })
+                    }
+
+                    // todo: dynamic size
+                    current_address += 4;
+                    current_argument_count += 1;
+                }
+
+                // the T0 register holds the address of the function
+                // all the arguments are in the A0-A7 registers (or on the stack)
+
+                instructions.push(Instruction::Jalr(
+                    Register::Ra,
+                    RegisterWithOffset(0.into(), Register::T0),
+                ));
             }
         };
 
