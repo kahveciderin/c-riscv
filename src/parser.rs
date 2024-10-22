@@ -39,9 +39,18 @@ impl ParserScopeState {
 
     pub fn add_variable(&mut self, name: String, datatype: Datatype) -> Arc<ParserVariable> {
         let unique_name = unique_identifier(Some(name.as_str()), None);
+        self.add_raw_name_variable(name, unique_name, datatype)
+    }
+
+    pub fn add_raw_name_variable(
+        &mut self,
+        name: String,
+        raw_name: String,
+        datatype: Datatype,
+    ) -> Arc<ParserVariable> {
         let variable = ParserVariable {
             name,
-            unique_name,
+            unique_name: raw_name,
             datatype,
         };
         let variable = Arc::new(variable);
@@ -112,6 +121,19 @@ impl ParserState {
 
     pub fn add_variable(&mut self, variable: String, datatype: Datatype) -> Arc<ParserVariable> {
         let variable = self.get_current_scope().add_variable(variable, datatype);
+        self.function_scope.insert_variable(variable.clone());
+        variable
+    }
+
+    pub fn add_raw_name_variable(
+        &mut self,
+        variable: String,
+        raw_name: String,
+        datatype: Datatype,
+    ) -> Arc<ParserVariable> {
+        let variable = self
+            .get_current_scope()
+            .add_raw_name_variable(variable, raw_name, datatype);
         self.function_scope.insert_variable(variable.clone());
         variable
     }
