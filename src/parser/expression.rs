@@ -53,8 +53,8 @@ pub fn parse_term<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
                 expression,
             )))),
             "(" => {
-                let arguments = combinator::separated(0.., parse_expression, parse_comma)
-                    .parse_next(input)?;
+                let arguments =
+                    combinator::separated(0.., parse_expression, parse_comma).parse_next(input)?;
 
                 parse_close_paren(input)?;
 
@@ -88,8 +88,13 @@ pub fn parse_variable_expression<'s>(input: &mut Stream<'s>) -> PResult<Expressi
 
     if let Some(symbol) = symbol {
         match symbol {
-            ParserSymbol::Function(function) => Ok(Expression::FunctionSymbol(function.name.clone())),
+            ParserSymbol::Function(function) => {
+                Ok(Expression::FunctionSymbol(function.name.clone()))
+            }
             ParserSymbol::Variable(variable) => {
+                Ok(Expression::Variable(variable.unique_name.clone()))
+            }
+            ParserSymbol::Argument(variable) => {
                 Ok(Expression::Variable(variable.unique_name.clone()))
             }
         }

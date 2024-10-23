@@ -6,12 +6,12 @@ use crate::{
 };
 
 use super::{
-    datatype::{self, parse_datatype},
+    datatype::parse_datatype,
     identifier::parse_identifier,
     scope::parse_scope,
     trivial_tokens::{parse_close_paren, parse_open_paren},
     whitespace::parse_whitespace,
-    Stream,
+    ParserSymbol, ParserVariable, Stream,
 };
 
 pub fn parse_function_argument<'s>(input: &mut Stream<'s>) -> PResult<FunctionArgument> {
@@ -43,11 +43,13 @@ pub fn parse_function_definition<'s>(input: &mut Stream<'s>) -> PResult<Function
     input.state.start_function_scope(name.to_string());
 
     arguments.iter().for_each(|arg| {
-        input.state.add_raw_name_variable(
-            arg.name.to_string(),
-            arg.unique_name.to_string(),
-            arg.datatype.clone(),
-        );
+        input
+            .state
+            .add_argument(ParserSymbol::Argument(ParserVariable {
+                name: arg.name.to_string(),
+                unique_name: arg.unique_name.to_string(),
+                datatype: arg.datatype.clone(),
+            }));
     });
 
     let body = parse_scope(input)?;

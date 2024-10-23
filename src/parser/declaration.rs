@@ -1,6 +1,9 @@
 use winnow::{combinator, PResult, Parser};
 
-use crate::types::{declaration::Declaration, expression::Expression};
+use crate::{
+    parser::ParserSymbol,
+    types::{declaration::Declaration, expression::Expression},
+};
 
 use super::{
     datatype::parse_datatype, expression::parse_expression, trivial_tokens::parse_equals,
@@ -30,9 +33,17 @@ pub fn parse_declaration<'s>(input: &mut Stream<'s>) -> PResult<Declaration> {
 
     let value = combinator::opt(parse_declaration_value).parse_next(input)?;
 
+    let name = match variable {
+        ParserSymbol::Variable(var) => var.unique_name,
+
+        // these two should be unreachable, but they are here just in case
+        ParserSymbol::Argument(var) => var.unique_name,
+        ParserSymbol::Function(fun) => fun.name,
+    };
+
     Ok(Declaration {
         data_type,
-        name: variable.unique_name.clone(),
+        name,
         value,
     })
 }
