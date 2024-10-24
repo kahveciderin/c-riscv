@@ -1,6 +1,8 @@
-int foo(int argument) { return argument + 2; }
+int foo(int a, int b, int c) {
+  return a + b;
+}
 
 int main() {
-  int a = foo(2) - 1;
+  int a = foo(8, 12, 16);
   return a;
 }

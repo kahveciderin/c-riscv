@@ -455,7 +455,7 @@ impl Compile for Expression {
                         ));
                     } else {
                         instructions.push(match current_argument_count {
-                            0 => Instruction::Add(Register::A0, Register::A0, Register::Zero), // <- this is essentially a nop
+                            0 => Instruction::Add(Register::T1, Register::A0, Register::Zero), 
                             1 => Instruction::Add(Register::A1, Register::A0, Register::Zero),
                             2 => Instruction::Add(Register::A2, Register::A0, Register::Zero),
                             3 => Instruction::Add(Register::A3, Register::A0, Register::Zero),
@@ -471,6 +471,8 @@ impl Compile for Expression {
                     current_address += 4;
                     current_argument_count += 1;
                 }
+
+                instructions.push(Instruction::Add(Register::A0, Register::T1, Register::Zero));
 
                 // the T0 register holds the address of the function
                 // all the arguments are in the A0-A7 registers (or on the stack)

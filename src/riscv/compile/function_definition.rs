@@ -47,14 +47,16 @@ impl Compile for FunctionDefinition<'_> {
         ));
 
         // extend our stack just for the register arguments
-        instructions.push(Instruction::Addi(
-            Register::Sp,
-            Register::Sp,
-            (-register_arguments_size_aligned).into(),
-        ));
+        // instructions.push(Instruction::Addi(
+        //     Register::Sp,
+        //     Register::Sp,
+        //     (-register_arguments_size_aligned).into(),
+        // ));
 
-        // this isn't aware of the above, so this points to the 9th argument
-        let mut current_address = state.get_stack_size();
+        instructions.extend(state.expand_stack(register_arguments_size_aligned as usize));
+        let stack_size = state.get_stack_size();
+
+        let mut current_relative_address: usize = 0; // todo
         let mut current_argument = 0;
         for arg in self.arguments.iter() {
             if current_argument <= 8 {
@@ -70,14 +72,17 @@ impl Compile for FunctionDefinition<'_> {
                         7 => Register::A7,
                         _ => unreachable!(),
                     },
-                    RegisterWithOffset((current_argument as i32).into(), Register::Sp),
+                    RegisterWithOffset((current_relative_address as i32).into(), Register::Sp),
                 ));
                 function_variables.push((
                     arg.unique_name.clone(),
                     arg.datatype.clone(),
-                    FunctionVariableType::Argument(current_address),
+                    FunctionVariableType::Argument(
+                        ((register_arguments_size_aligned as usize) - current_relative_address),
+                    ),
                 ));
-                current_address += arg.datatype.size();
+                println!("adding argument to address: {current_relative_address}");
+                current_relative_address += arg.datatype.size();
             } else {
                 todo!("stack leaking arguments")
             }
@@ -88,6 +93,8 @@ impl Compile for FunctionDefinition<'_> {
         instructions.extend(state.create_function_scope(function_variables));
 
         instructions.push(Instruction::Comment("Function body:".to_owned()));
+
+        println!("scope: {:#?}", state.scope);
 
         let body = self.body.compile(state);
         instructions.extend(body);

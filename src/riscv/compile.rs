@@ -317,6 +317,8 @@ impl Compile for Program<'_> {
             instructions.extend(function.compile(state));
         }
 
+        println!("state {state:#?}");
+
         instructions
     }
 }
