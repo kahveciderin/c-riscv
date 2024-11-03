@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Datatype {
     Int,
     FunctionPointer {

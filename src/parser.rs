@@ -171,19 +171,41 @@ impl ParserState {
     }
 
     pub fn get_symbol(&self, symbol: &str) -> Option<ParserSymbol> {
-        if let Some(symbol) = self
-            .scope
+        self.scope
             .iter()
             .rev()
             .find_map(|s| s.get_symbol(symbol))
-            .map(|s| s.as_ref().clone())
-        {
-            return Some(symbol);
-        } else if let Some(symbol) = self.static_symbols.iter().find(|s| s.name == symbol) {
-            return Some(ParserSymbol::Function(symbol.clone()));
-        } else {
-            None
-        }
+            .or_else(|| {
+                self.static_symbols
+                    .iter()
+                    .find(|s| s.name == symbol)
+                    .map(|s| Arc::new(ParserSymbol::Function(s.clone())).as_ref().clone())
+                    .map(|f| Arc::new(f))
+            })
+            .map(|f| f.as_ref().clone())
+    }
+
+    pub fn get_by_unique_name(&self, unique_name: &str) -> Option<ParserSymbol> {
+        self.scope
+            .iter()
+            .rev()
+            .find_map(|s| {
+                s.symbols
+                    .iter()
+                    .find(|v| match v.as_ref() {
+                        ParserSymbol::Variable(v) => v.unique_name == unique_name,
+                        ParserSymbol::Argument(v) => v.unique_name == unique_name,
+                        ParserSymbol::Function(_) => false,
+                    })
+                    .cloned()
+            })
+            .or_else(|| {
+                self.static_symbols
+                    .iter()
+                    .find(|s| s.name == unique_name)
+                    .map(|s| Arc::new(ParserSymbol::Function(s.clone())))
+            })
+            .map(|f| f.as_ref().clone())
     }
 }
 

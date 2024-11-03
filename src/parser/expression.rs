@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use datatypes::GetType;
 use winnow::{combinator, PResult, Parser};
 
 use crate::{
@@ -23,7 +24,13 @@ pub mod datatypes;
 pub fn parse_expression<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
     parse_whitespace(input)?;
 
-    parse_binary_operation.parse_next(input)
+    let expression = parse_binary_operation.parse_next(input);
+
+    if let Ok(ref expression) = expression {
+        expression.get_type(&input.state);
+    }
+
+    return expression;
 }
 
 pub fn parse_postfix_operator<'s>(input: &'s mut Stream) -> PResult<&'s str> {
