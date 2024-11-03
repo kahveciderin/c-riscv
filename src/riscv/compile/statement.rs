@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use crate::{
+    parser::Case,
     riscv::{
         instruction::Instruction,
         values::{Immediate, Register},
@@ -8,7 +9,10 @@ use crate::{
     types::{
         expression::Expression,
         scope::{Scope, ScopeItem},
-        statement::{ForInit, ForStatement, IfStatement, JumpStatement, Statement, WhileStatement},
+        statement::{
+            ForInit, ForStatement, IfStatement, JumpStatement, Statement, SwitchStatement,
+            WhileStatement,
+        },
     },
     utils::random_name::unique_identifier,
 };
@@ -25,6 +29,7 @@ impl Compile for Statement {
             Statement::If { statement } => statement.compile(state),
             Statement::While { statement } => statement.compile(state),
             Statement::For { statement } => statement.compile(state),
+            Statement::Switch { statement } => statement.compile(state),
         }
     }
 }
@@ -165,5 +170,39 @@ impl Compile for JumpStatement {
                 instructions
             }
         }
+    }
+}
+
+impl Compile for SwitchStatement {
+    fn compile(&self, state: &mut CompilerState) -> Vec<Instruction> {
+        let mut instructions = Vec::new();
+
+        instructions.extend(self.expression.compile(state));
+        instructions.push(Instruction::Add(Register::S1, Register::A0, Register::Zero));
+
+        for case in self.cases.iter() {
+            if let Case::Case(case) = case {
+                let number = Expression::Number(*case);
+                instructions.extend(number.compile(state));
+                instructions.push(Instruction::Beq(
+                    Register::S1,
+                    Register::A0,
+                    Immediate::Label(self.id.clone() + "____case_" + &case.to_string()),
+                ));
+            }
+        }
+        for case in self.cases.iter() {
+            if let Case::Default = case {
+                instructions.push(Instruction::JP(Immediate::Label(
+                    self.id.clone() + "____default",
+                )));
+            }
+        }
+
+        instructions.extend(self.body.compile(state));
+
+        instructions.push(Instruction::Label(self.id.clone() + "_end"));
+
+        instructions
     }
 }

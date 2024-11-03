@@ -22,7 +22,6 @@ impl GetType for ParserSymbol {
 
 impl GetType for Expression {
     fn get_type(&self, state: &ParserState) -> Datatype {
-        println!("Getting type for expression {:#?}, state: {:#?}", self, state);
         match self {
             Expression::Number(_) => Datatype::Int,
             Expression::UnaryOp(op) => op.get_type(state),
@@ -120,13 +119,12 @@ impl GetType for Call {
         };
 
         if let Datatype::FunctionPointer { ref arguments, .. } = function {
+            if self.arguments.len() != arguments.len() {
+                panic!("Incorrect number of arguments in function call");
+            }
 
-        if self.arguments.len() != arguments.len() {
-            panic!("Incorrect number of arguments in function call");
-        }
-
-        for (i, arg) in self.arguments.iter().enumerate() {
-            let arg_type = arg.get_type(state);
+            for (i, arg) in self.arguments.iter().enumerate() {
+                let arg_type = arg.get_type(state);
 
                 if arguments.len() <= i {
                     panic!("Too many arguments in function call");

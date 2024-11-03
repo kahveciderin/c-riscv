@@ -94,9 +94,17 @@ impl ParserScopeState {
     }
 }
 
+#[derive(Debug, Clone)]
+pub enum Case {
+    Default,
+    Case(i32),
+}
+
 #[derive(Debug)]
 pub struct LoopState {
     id: String,
+    is_loop: bool,
+    cases: Vec<Case>,
 }
 
 #[derive(Debug)]
@@ -117,9 +125,13 @@ impl ParserState {
         }
     }
 
-    pub fn push_loop(&mut self, t: String) -> String {
+    pub fn push_loop(&mut self, t: String, l: bool) -> String {
         let id = unique_identifier(Some(t.as_str()), None);
-        self.loop_state.push(LoopState { id: id.clone() });
+        self.loop_state.push(LoopState {
+            id: id.clone(),
+            is_loop: l,
+            cases: vec![],
+        });
         id
     }
 
@@ -128,11 +140,29 @@ impl ParserState {
     }
 
     pub fn get_loop(&self) -> Option<&LoopState> {
+        self.loop_state.iter().rev().find(|l| l.is_loop)
+    }
+
+    pub fn get_loop_or_switch(&self) -> Option<&LoopState> {
         self.loop_state.last()
+    }
+
+    pub fn get_switch(&self) -> Option<&LoopState> {
+        self.loop_state.iter().rev().find(|l| !l.is_loop)
     }
 
     pub fn push_scope(&mut self) {
         self.scope.push(ParserScopeState::new());
+    }
+
+    pub fn push_case_to_switch(&mut self, case: Case) {
+        let loop_state_index = self.loop_state
+            .iter()
+            .rev()
+            .position(|l| !l.is_loop)
+            .unwrap_or_else(|| panic!("Switch not found"));
+        
+        self.loop_state[loop_state_index].cases.push(case);
     }
 
     pub fn pop_scope(&mut self) -> ParserScopeState {

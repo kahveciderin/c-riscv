@@ -20,6 +20,7 @@ use super::{
 };
 
 pub mod datatypes;
+pub mod fold;
 
 pub fn parse_expression<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
     parse_whitespace(input)?;

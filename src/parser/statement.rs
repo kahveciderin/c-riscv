@@ -3,7 +3,7 @@ use std::sync::Arc;
 use winnow::{combinator, error, PResult, Parser};
 
 use crate::types::statement::{
-    ForInit, ForStatement, IfStatement, JumpStatement, Statement, WhileStatement,
+    ForInit, ForStatement, IfStatement, JumpStatement, Statement, SwitchStatement, WhileStatement,
 };
 
 use super::{
@@ -23,6 +23,7 @@ pub fn parse_statement<'s>(input: &mut Stream<'s>) -> PResult<Statement> {
         parse_if_statement,
         parse_while_statement,
         parse_for_statement,
+        parse_switch_statement,
         parse_expression_statement,
         parse_scope_statement,
         parse_null_statement,
@@ -74,7 +75,7 @@ pub fn parse_break_jump<'s>(input: &mut Stream<'s>) -> PResult<JumpStatement> {
 
     parse_semicolon(input)?;
 
-    if let Some(_loop) = input.state.get_loop() {
+    if let Some(_loop) = input.state.get_loop_or_switch() {
         return Ok(JumpStatement::Break {
             id: _loop.id.clone(),
         });
@@ -159,7 +160,7 @@ pub fn parse_while_statement(input: &mut Stream) -> PResult<Statement> {
 
     parse_close_paren(input)?;
 
-    let id = input.state.push_loop("while".to_string());
+    let id = input.state.push_loop("while".to_string(), true);
 
     let block = parse_statement(input).map(Arc::new)?;
 
@@ -210,7 +211,7 @@ pub fn parse_for_statement(input: &mut Stream) -> PResult<Statement> {
 
     parse_close_paren(input)?;
 
-    let id = input.state.push_loop("for".to_string());
+    let id = input.state.push_loop("for".to_string(), true);
 
     let block = parse_statement(input)?;
 
@@ -224,6 +225,36 @@ pub fn parse_for_statement(input: &mut Stream) -> PResult<Statement> {
             increment: update,
             block: Arc::new(block),
             id,
+        },
+    })
+}
+
+pub fn parse_switch_statement(input: &mut Stream) -> PResult<Statement> {
+    parse_whitespace(input)?;
+
+    let identifier = parse_identifier(input)?;
+    if identifier != "switch" {
+        return Err(error::ErrMode::Backtrack(error::ContextError::new()));
+    }
+
+    parse_open_paren(input)?;
+
+    let expression = parse_expression(input)?;
+
+    parse_close_paren(input)?;
+
+    let id = input.state.push_loop("switch".to_string(), false);
+
+    let block = parse_statement(input)?;
+
+    let switch_state = input.state.pop_loop();
+
+    Ok(Statement::Switch {
+        statement: SwitchStatement {
+            expression,
+            body: Arc::new(block),
+            id,
+            cases: switch_state.cases,
         },
     })
 }

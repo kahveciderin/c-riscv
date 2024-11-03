@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use crate::parser::Case;
+
 use super::{declaration::Declaration, expression::Expression, scope::Scope};
 
 #[derive(Debug, Clone)]
@@ -39,6 +41,14 @@ pub struct ForStatement {
 }
 
 #[derive(Debug, Clone)]
+pub struct SwitchStatement {
+    pub expression: Expression,
+    pub body: Arc<Statement>,
+    pub id: String,
+    pub cases: Vec<Case>,
+}
+
+#[derive(Debug, Clone)]
 pub enum Statement {
     Jump { statement: JumpStatement },
     Expression { expression: Expression },
@@ -46,5 +56,6 @@ pub enum Statement {
     If { statement: IfStatement },
     While { statement: WhileStatement },
     For { statement: ForStatement },
+    Switch { statement: SwitchStatement },
     Null,
 }
