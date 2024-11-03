@@ -1,5 +1,8 @@
 use crate::{
-    types::{datatype::Datatype, program::Program},
+    types::{
+        datatype::Datatype,
+        program::{Program, ProgramStatement},
+    },
     utils::nearest_multiple::nearest_multiple,
 };
 
@@ -103,12 +106,6 @@ impl CompilerState {
         // shrink the stack (for the saved variables)
         instructions.push(Instruction::Addi(Register::Sp, Register::Sp, 32.into()));
 
-        // instructions.push(Instruction::Addi(
-        //     Register::Sp,
-        //     Register::Sp,
-        //     (self.scope.argument_size() as i32).into(),
-        // ));
-
         // return
         instructions.push(Instruction::RetP);
 
@@ -157,6 +154,15 @@ mod expression;
 mod function_definition;
 mod scope;
 mod statement;
+
+impl Compile for ProgramStatement<'_> {
+    fn compile(&self, state: &mut CompilerState) -> Vec<Instruction> {
+        match self {
+            ProgramStatement::FunctionDefinition(function) => function.compile(state),
+            ProgramStatement::FunctionDeclaration(declaration) => declaration.compile(state),
+        }
+    }
+}
 
 impl Compile for Program<'_> {
     fn compile(&self, state: &mut CompilerState) -> Vec<Instruction> {

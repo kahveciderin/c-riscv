@@ -17,3 +17,10 @@ pub struct FunctionDefinition<'s> {
     pub body: Scope,
     pub scope_state: ParserScopeState,
 }
+
+#[derive(Debug)]
+pub struct FunctionDeclaration<'s> {
+    pub name: &'s str,
+    pub arguments: Vec<FunctionArgument>,
+    pub return_type: Datatype,
+}

@@ -2,7 +2,10 @@ use winnow::{combinator, PResult, Parser};
 
 use crate::{
     parser::trivial_tokens::parse_comma,
-    types::function_definition::{FunctionArgument, FunctionDefinition},
+    types::{
+        function_definition::{FunctionArgument, FunctionDefinition},
+        program::ProgramStatement,
+    },
     utils::random_name::unique_identifier,
 };
 
@@ -28,7 +31,7 @@ pub fn parse_function_argument<'s>(input: &mut Stream<'s>) -> PResult<FunctionAr
     })
 }
 
-pub fn parse_function_definition<'s>(input: &mut Stream<'s>) -> PResult<FunctionDefinition<'s>> {
+pub fn parse_function_definition<'s>(input: &mut Stream<'s>) -> PResult<ProgramStatement<'s>> {
     parse_whitespace(input)?;
 
     let return_type = parse_datatype(input)?;
@@ -59,11 +62,11 @@ pub fn parse_function_definition<'s>(input: &mut Stream<'s>) -> PResult<Function
 
     let body = parse_scope(input)?;
 
-    Ok(FunctionDefinition {
+    Ok(ProgramStatement::FunctionDefinition(FunctionDefinition {
         return_type,
         arguments,
         name,
         body,
         scope_state: input.state.function_scope.clone(),
-    })
+    }))
 }

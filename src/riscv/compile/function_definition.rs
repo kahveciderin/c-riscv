@@ -4,7 +4,9 @@ use crate::{
         values::{Register, RegisterWithOffset},
     },
     types::{
-        expression::Expression, function_definition::FunctionDefinition, statement::JumpStatement,
+        expression::Expression,
+        function_definition::{FunctionDeclaration, FunctionDefinition},
+        statement::JumpStatement,
     },
     utils::nearest_multiple::nearest_multiple,
 };
@@ -99,17 +101,18 @@ impl Compile for FunctionDefinition<'_> {
             let size = variable.datatype.size();
             let address = current_address;
             state.scope.variables.push(CompilerVariable {
-                name: variable.unique_name,
+                name: variable.unique_name.clone(),
                 address,
                 datatype: variable.datatype.clone(),
                 location: CompilerVariableLocation::Stack,
             });
+
+            instructions.push(Instruction::Comment("Variable ".to_owned() + &variable.unique_name + " at address " + &address.to_string()));
+
             current_address += size as i32;
         }
 
-        let register_argument_size_aligned =
-            nearest_multiple(register_argument_size as u32, 16) as i32;
-        let mut current_address = 32 + register_argument_size_aligned;
+        let mut current_address = 32 + stack_increase;
         for stack_variable in self.arguments.iter().skip(8) {
             state.scope.variables.push(CompilerVariable {
                 name: stack_variable.unique_name.clone(),
@@ -141,5 +144,11 @@ impl Compile for FunctionDefinition<'_> {
         // state.decrease_stack_size(32);
 
         instructions
+    }
+}
+
+impl Compile for FunctionDeclaration<'_> {
+    fn compile(&self, state: &mut CompilerState) -> Vec<Instruction> {
+        vec![]
     }
 }
