@@ -9,7 +9,7 @@ use crate::{
     utils::nearest_multiple::nearest_multiple,
 };
 
-use super::{Compile, CompilerState, CompilerVariable};
+use super::{Compile, CompilerState, CompilerVariable, CompilerVariableLocation};
 
 impl Compile for FunctionDefinition<'_> {
     fn compile(&self, state: &mut CompilerState) -> Vec<Instruction> {
@@ -54,30 +54,19 @@ impl Compile for FunctionDefinition<'_> {
         let total_scope_size: usize = variable_local_size + register_argument_size;
         let stack_increase = nearest_multiple(total_scope_size as u32, 16) as i32;
 
-        instructions.push(Instruction::Addi(Register::Fp, Register::Sp, 4.into()));
-
         instructions.push(Instruction::Addi(
             Register::Sp,
             Register::Sp,
             (-stack_increase).into(),
         ));
 
+        instructions.push(Instruction::Addi(Register::Fp, Register::Sp, 0.into()));
+
         // after this point, the frame pointer is the base of the stack
 
         state.scope.variables = Vec::new();
 
         let mut current_address = 0;
-        for variable in function_variables {
-            let size = variable.datatype.size();
-            let address = current_address;
-            state.scope.variables.push(CompilerVariable {
-                name: variable.unique_name,
-                address,
-                datatype: variable.datatype.clone(),
-            });
-            current_address += size as i32;
-        }
-
         let mut current_argument = 0;
         for register_variable in self.arguments.iter().take(8) {
             instructions.push(Instruction::Sw(
@@ -92,28 +81,41 @@ impl Compile for FunctionDefinition<'_> {
                     7 => Register::A7,
                     _ => unreachable!(),
                 },
-                RegisterWithOffset((current_address as i32).into(), Register::Fp),
+                RegisterWithOffset((current_address).into(), Register::Fp),
             ));
 
             state.scope.variables.push(CompilerVariable {
                 name: register_variable.unique_name.clone(),
                 address: current_address,
                 datatype: register_variable.datatype.clone(),
+                location: CompilerVariableLocation::Stack,
             });
 
             current_argument += 1;
             current_address += 4; // todo: dynamic size
         }
 
-        let stack_argument_count = self.arguments.iter().skip(8).count();
-        let stack_argument_size_aligned =
-            nearest_multiple(stack_argument_count as u32 * 4, 16) as i32;
-        let mut current_address = -32 - stack_argument_size_aligned;
+        for variable in function_variables {
+            let size = variable.datatype.size();
+            let address = current_address;
+            state.scope.variables.push(CompilerVariable {
+                name: variable.unique_name,
+                address,
+                datatype: variable.datatype.clone(),
+                location: CompilerVariableLocation::Stack,
+            });
+            current_address += size as i32;
+        }
+
+        let register_argument_size_aligned =
+            nearest_multiple(register_argument_size as u32, 16) as i32;
+        let mut current_address = 32 + register_argument_size_aligned;
         for stack_variable in self.arguments.iter().skip(8) {
             state.scope.variables.push(CompilerVariable {
                 name: stack_variable.unique_name.clone(),
                 address: current_address,
                 datatype: stack_variable.datatype.clone(),
+                location: CompilerVariableLocation::Leaked,
             });
 
             current_address += 4; // todo: dynamic size

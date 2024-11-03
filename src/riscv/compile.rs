@@ -10,11 +10,18 @@ use super::{
 
 const STACK_ALIGNMENT: u32 = 16;
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum CompilerVariableLocation {
+    Leaked,
+    Stack,
+}
+
 #[derive(Debug, Clone)]
 pub struct CompilerVariable {
     pub name: String,
     pub address: i32,
     pub datatype: Datatype,
+    pub location: CompilerVariableLocation,
 }
 
 #[derive(Debug, Clone)]
@@ -27,7 +34,13 @@ impl CompilerScope {
         let size = self
             .variables
             .iter()
-            .map(|v| v.datatype.size())
+            .filter_map(|v| {
+                if v.location == CompilerVariableLocation::Leaked {
+                    None
+                } else {
+                    Some(v.datatype.size())
+                }
+            })
             .sum::<usize>() as u32;
 
         nearest_multiple(size, STACK_ALIGNMENT) as usize
@@ -153,7 +166,7 @@ impl Compile for Program<'_> {
             "Compiler output generated with MY OWN COMPILER".to_owned(),
         ));
         instructions.push(Instruction::Comment(
-            "If needed, you can receive the source code of the compiler".to_owned(),
+            "If required, I can provide you with the source code".to_owned(),
         ));
         instructions.push(Instruction::Comment(
             "The compiler is entirely my own work, so this makes".to_owned(),

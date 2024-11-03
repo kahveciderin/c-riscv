@@ -421,18 +421,6 @@ impl Compile for Expression {
             Expression::Call(call) => {
                 let argument_count = call.arguments.len() as u32;
 
-                // todo: dynamic size
-                let stack_increase = nearest_multiple(argument_count * 4, 16) as i32;
-
-                // we are handling the saved register #1 in the function prologue already, so it's 100% safe to modify
-                instructions.push(Instruction::Addi(Register::S1, Register::Sp, 4.into()));
-
-                instructions.push(Instruction::Addi(
-                    Register::Sp,
-                    Register::Sp,
-                    (-stack_increase).into(),
-                ));
-
                 // riscv integer calling convention states that the first 8 arguments
                 // should reside in a0-a7. If there are more than 8 arguments, the
                 // remaining arguments are allowed to leak into the stack
@@ -440,13 +428,27 @@ impl Compile for Expression {
                 let stack_arguments = call.arguments.iter().skip(8);
                 let register_arguments = call.arguments.iter().take(8).rev();
 
-                let stack_argument_size = nearest_multiple(4 * stack_arguments.len() as u32, 16) as i32;
+                let stack_argument_size =
+                    nearest_multiple(4 * stack_arguments.len() as u32, 16) as i32;
+                let register_argument_size =
+                    nearest_multiple(4 * register_arguments.len() as u32, 16) as i32;
 
-                let joined_arguments = stack_arguments.chain(register_arguments.clone());
+                instructions.push(Instruction::Addi(
+                    Register::Sp,
+                    Register::Sp,
+                    (-stack_argument_size).into(),
+                ));
 
+                instructions.push(Instruction::Add(Register::S1, Register::Sp, Register::Zero));
+
+                instructions.push(Instruction::Addi(
+                    Register::Sp,
+                    Register::Sp,
+                    (-register_argument_size).into(),
+                ));
 
                 let mut current_address = 0;
-                for arg in joined_arguments {
+                for arg in stack_arguments {
                     instructions.extend(arg.compile(state));
 
                     instructions.push(Instruction::Sw(
@@ -456,10 +458,21 @@ impl Compile for Expression {
 
                     current_address += 4;
                 }
-                
+
+                let mut current_address = 0;
+                for arg in register_arguments.clone() {
+                    instructions.extend(arg.compile(state));
+
+                    instructions.push(Instruction::Sw(
+                        Register::A0,
+                        RegisterWithOffset(current_address.into(), Register::Sp),
+                    ));
+
+                    current_address += 4;
+                }
+
                 instructions.extend(call.expression.compile(state));
                 instructions.push(Instruction::Add(Register::T0, Register::A0, Register::Zero));
-
 
                 // currently, all arguments are pushed onto the stack
                 // register arguments are in reverse order, and on the top
@@ -467,7 +480,7 @@ impl Compile for Expression {
                 // order, and at the bottom of the stack
 
                 let mut argument_count = 0;
-                for _ in register_arguments {
+                for _ in register_arguments.clone() {
                     current_address -= 4;
 
                     instructions.push(Instruction::Lw(
@@ -482,7 +495,7 @@ impl Compile for Expression {
                             7 => Register::A7,
                             _ => unreachable!(),
                         },
-                        RegisterWithOffset(current_address.into(), Register::S1),
+                        RegisterWithOffset(current_address.into(), Register::Sp),
                     ));
 
                     argument_count += 1;
@@ -491,7 +504,7 @@ impl Compile for Expression {
                 instructions.push(Instruction::Addi(
                     Register::Sp,
                     Register::Sp,
-                    (stack_increase - stack_argument_size).into(),
+                    (register_argument_size).into(),
                 ));
 
                 // t0 contains the address of the function to call
@@ -499,6 +512,13 @@ impl Compile for Expression {
                 instructions.push(Instruction::Jalr(
                     Register::Ra,
                     RegisterWithOffset(0.into(), Register::T0),
+                ));
+
+
+                instructions.push(Instruction::Addi(
+                    Register::Sp,
+                    Register::Sp,
+                    (stack_argument_size).into(),
                 ));
             }
         };

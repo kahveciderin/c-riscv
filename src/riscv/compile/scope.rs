@@ -1,5 +1,3 @@
-use winnow::combinator::todo;
-
 use crate::{
     riscv::instruction::Instruction,
     types::scope::{Label, Scope, ScopeItem},
