@@ -18,6 +18,8 @@ use super::{
     ParserSymbol, Stream,
 };
 
+pub mod datatypes;
+
 pub fn parse_expression<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
     parse_whitespace(input)?;
 

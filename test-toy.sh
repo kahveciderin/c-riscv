@@ -7,6 +7,6 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-echo "Running file $1 with spike"
+# echo "Running file $1 with spike"
 
-./run-asm.sh $1
+# ./run-asm.sh $1

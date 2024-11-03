@@ -30,6 +30,7 @@ pub struct ParserVariable {
 #[derive(Debug, Clone)]
 pub struct ParserStaticSymbol {
     pub name: String,
+    pub datatype: Datatype,
 }
 
 #[derive(Debug, Clone)]
@@ -158,8 +159,14 @@ impl ParserState {
         self.static_symbols.push(symbol);
     }
 
-    pub fn start_function_scope(&mut self, name: String) {
-        self.add_static_symbol(ParserStaticSymbol { name });
+    pub fn start_function_scope(&mut self, name: String, arguments: Vec<Datatype>, ret: Datatype) {
+        self.add_static_symbol(ParserStaticSymbol {
+            name,
+            datatype: Datatype::FunctionPointer {
+                return_type: Arc::new(ret),
+                arguments,
+            },
+        });
         self.function_scope = ParserScopeState::new();
     }
 

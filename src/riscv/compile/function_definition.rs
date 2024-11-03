@@ -9,7 +9,7 @@ use crate::{
     utils::nearest_multiple::nearest_multiple,
 };
 
-use super::{Compile, CompilerState, FunctionVariableType};
+use super::{Compile, CompilerState, CompilerVariable};
 
 impl Compile for FunctionDefinition<'_> {
     fn compile(&self, state: &mut CompilerState) -> Vec<Instruction> {
@@ -18,83 +18,112 @@ impl Compile for FunctionDefinition<'_> {
         instructions.push(Instruction::Symbol("globl ".to_string() + &self.name));
         instructions.push(Instruction::Label(self.name.into()));
 
-        let mut function_variables: Vec<_> = self
-            .scope_state
-            .get_only_variables()
-            .iter()
-            .map(|v| {
-                (
-                    v.unique_name.clone(),
-                    v.datatype.clone(),
-                    FunctionVariableType::Local,
-                )
-            })
-            .collect();
+        instructions.push(Instruction::Comment("Function Prologue".to_owned()));
 
-        // currently, the function arguments are from a0-7 and the rest
-        // are leaked on the stack. we need to somehow put everything back on
-        // the stack
-        let register_arguments_size = self
-            .arguments
-            .iter()
-            .take(8)
-            .map(|a| a.datatype.size() as u32)
-            .sum::<u32>();
-        let register_arguments_size_aligned = nearest_multiple(register_arguments_size, 16) as i32;
+        // expand the stack
+        instructions.push(Instruction::Addi(Register::Sp, Register::Sp, (-32).into()));
 
-        instructions.push(Instruction::Comment(
-            "Operations for arguments passed by registers".to_owned(),
+        // store the return address
+        instructions.push(Instruction::Sw(
+            Register::Ra,
+            RegisterWithOffset(0.into(), Register::Sp),
         ));
 
-        // extend our stack just for the register arguments
-        // instructions.push(Instruction::Addi(
-        //     Register::Sp,
-        //     Register::Sp,
-        //     (-register_arguments_size_aligned).into(),
-        // ));
+        // store the frame pointer
+        instructions.push(Instruction::Sw(
+            Register::Fp,
+            RegisterWithOffset(16.into(), Register::Sp),
+        ));
 
-        instructions.extend(state.expand_stack(register_arguments_size_aligned as usize));
-        let stack_size = state.get_stack_size();
+        // store the saved register 1
+        instructions.push(Instruction::Sw(
+            Register::S1,
+            RegisterWithOffset(24.into(), Register::Sp),
+        ));
 
-        let mut current_relative_address: usize = 0; // todo
-        let mut current_argument = 0;
-        for arg in self.arguments.iter() {
-            if current_argument <= 8 {
-                instructions.push(Instruction::Sw(
-                    match current_argument {
-                        0 => Register::A0,
-                        1 => Register::A1,
-                        2 => Register::A2,
-                        3 => Register::A3,
-                        4 => Register::A4,
-                        5 => Register::A5,
-                        6 => Register::A6,
-                        7 => Register::A7,
-                        _ => unreachable!(),
-                    },
-                    RegisterWithOffset((current_relative_address as i32).into(), Register::Sp),
-                ));
-                function_variables.push((
-                    arg.unique_name.clone(),
-                    arg.datatype.clone(),
-                    FunctionVariableType::Argument(
-                        ((register_arguments_size_aligned as usize) - current_relative_address),
-                    ),
-                ));
-                println!("adding argument to address: {current_relative_address}");
-                current_relative_address += arg.datatype.size();
-            } else {
-                todo!("stack leaking arguments")
-            }
+        instructions.push(Instruction::Comment(String::from(
+            "Finished function prologue, now allocating space for variables",
+        )));
 
-            current_argument += 1;
+        // handling variables
+
+        let function_variables: Vec<_> = self.scope_state.get_only_variables();
+
+        let variable_local_size: usize = function_variables.iter().map(|v| v.datatype.size()).sum();
+        let register_argument_size = self.arguments.iter().take(8).count() * 4;
+        let total_scope_size: usize = variable_local_size + register_argument_size;
+        let stack_increase = nearest_multiple(total_scope_size as u32, 16) as i32;
+
+        instructions.push(Instruction::Addi(Register::Fp, Register::Sp, 4.into()));
+
+        instructions.push(Instruction::Addi(
+            Register::Sp,
+            Register::Sp,
+            (-stack_increase).into(),
+        ));
+
+        // after this point, the frame pointer is the base of the stack
+
+        state.scope.variables = Vec::new();
+
+        let mut current_address = 0;
+        for variable in function_variables {
+            let size = variable.datatype.size();
+            let address = current_address;
+            state.scope.variables.push(CompilerVariable {
+                name: variable.unique_name,
+                address,
+                datatype: variable.datatype.clone(),
+            });
+            current_address += size as i32;
         }
 
-        instructions.extend(state.create_function_scope(function_variables));
+        let mut current_argument = 0;
+        for register_variable in self.arguments.iter().take(8) {
+            instructions.push(Instruction::Sw(
+                match current_argument {
+                    0 => Register::A0,
+                    1 => Register::A1,
+                    2 => Register::A2,
+                    3 => Register::A3,
+                    4 => Register::A4,
+                    5 => Register::A5,
+                    6 => Register::A6,
+                    7 => Register::A7,
+                    _ => unreachable!(),
+                },
+                RegisterWithOffset((current_address as i32).into(), Register::Fp),
+            ));
+
+            state.scope.variables.push(CompilerVariable {
+                name: register_variable.unique_name.clone(),
+                address: current_address,
+                datatype: register_variable.datatype.clone(),
+            });
+
+            current_argument += 1;
+            current_address += 4; // todo: dynamic size
+        }
+
+        let stack_argument_count = self.arguments.iter().skip(8).count();
+        let stack_argument_size_aligned =
+            nearest_multiple(stack_argument_count as u32 * 4, 16) as i32;
+        let mut current_address = -32 - stack_argument_size_aligned;
+        for stack_variable in self.arguments.iter().skip(8) {
+            state.scope.variables.push(CompilerVariable {
+                name: stack_variable.unique_name.clone(),
+                address: current_address,
+                datatype: stack_variable.datatype.clone(),
+            });
+
+            current_address += 4; // todo: dynamic size
+        }
+
+        instructions.push(Instruction::Comment(String::from(
+            "Finished allocating space for variables",
+        )));
 
         instructions.push(Instruction::Comment("Function body:".to_owned()));
-
-        println!("scope: {:#?}", state.scope);
 
         let body = self.body.compile(state);
         instructions.extend(body);
@@ -107,7 +136,7 @@ impl Compile for FunctionDefinition<'_> {
         .compile(state);
         instructions.extend(implicit_return);
 
-        state.decrease_stack_size(32);
+        // state.decrease_stack_size(32);
 
         instructions
     }

@@ -183,12 +183,9 @@ impl Compile for BinaryOp {
                 instructions.extend(rhs.compile(state));
                 if let Expression::Variable(name) = lhs.as_ref() {
                     if let Some(variable) = state.get_variable(name) {
-                        let relative_location = state.get_stack_size() - variable.address;
-                        println!("Variable: {:?}, location: {relative_location}", variable);
-
                         instructions.push(Instruction::Sw(
                             Register::A0,
-                            RegisterWithOffset((relative_location as i32).into(), Register::Sp),
+                            RegisterWithOffset((variable.address as i32).into(), Register::Fp),
                         ));
                     } else {
                         // error
@@ -389,12 +386,9 @@ impl Compile for Expression {
             }
             Expression::Variable(name) => {
                 if let Some(variable) = state.get_variable(name) {
-                    let relative_location = state.get_stack_size() - variable.address;
-                    println!("Variable: {:?}, location: {relative_location}", variable);
-
                     instructions.push(Instruction::Lw(
                         Register::A0,
-                        RegisterWithOffset((relative_location as i32).into(), Register::Sp),
+                        RegisterWithOffset((variable.address as i32).into(), Register::Fp),
                     ));
                 } else {
                     // error
@@ -428,54 +422,79 @@ impl Compile for Expression {
                 let argument_count = call.arguments.len() as u32;
 
                 // todo: dynamic size
-                let stack_increase = if argument_count > 8 {
-                    nearest_multiple(argument_count * 4, 16) as usize
-                } else {
-                    0
-                };
+                let stack_increase = nearest_multiple(argument_count * 4, 16) as i32;
 
-                instructions.extend(state.expand_stack(stack_increase));
+                // we are handling the saved register #1 in the function prologue already, so it's 100% safe to modify
+                instructions.push(Instruction::Addi(Register::S1, Register::Sp, 4.into()));
+
+                instructions.push(Instruction::Addi(
+                    Register::Sp,
+                    Register::Sp,
+                    (-stack_increase).into(),
+                ));
 
                 // riscv integer calling convention states that the first 8 arguments
                 // should reside in a0-a7. If there are more than 8 arguments, the
                 // remaining arguments are allowed to leak into the stack
 
+                let stack_arguments = call.arguments.iter().skip(8);
+                let register_arguments = call.arguments.iter().take(8).rev();
+
+                let stack_argument_size = nearest_multiple(4 * stack_arguments.len() as u32, 16) as i32;
+
+                let joined_arguments = stack_arguments.chain(register_arguments.clone());
+
+
+                let mut current_address = 0;
+                for arg in joined_arguments {
+                    instructions.extend(arg.compile(state));
+
+                    instructions.push(Instruction::Sw(
+                        Register::A0,
+                        RegisterWithOffset(current_address.into(), Register::S1),
+                    ));
+
+                    current_address += 4;
+                }
+                
                 instructions.extend(call.expression.compile(state));
                 instructions.push(Instruction::Add(Register::T0, Register::A0, Register::Zero));
 
-                let mut current_address = 0;
-                let mut current_argument_count = 0;
-                for arg in &call.arguments {
-                    instructions.extend(arg.compile(state));
 
-                    if current_argument_count > 8 {
-                        instructions.push(Instruction::Sd(
-                            Register::A0,
-                            RegisterWithOffset(current_address.into(), Register::Sp),
-                        ));
-                    } else {
-                        instructions.push(match current_argument_count {
-                            0 => Instruction::Add(Register::T1, Register::A0, Register::Zero), 
-                            1 => Instruction::Add(Register::A1, Register::A0, Register::Zero),
-                            2 => Instruction::Add(Register::A2, Register::A0, Register::Zero),
-                            3 => Instruction::Add(Register::A3, Register::A0, Register::Zero),
-                            4 => Instruction::Add(Register::A4, Register::A0, Register::Zero),
-                            5 => Instruction::Add(Register::A5, Register::A0, Register::Zero),
-                            6 => Instruction::Add(Register::A6, Register::A0, Register::Zero),
-                            7 => Instruction::Add(Register::A7, Register::A0, Register::Zero),
+                // currently, all arguments are pushed onto the stack
+                // register arguments are in reverse order, and on the top
+                // of the stack, while the stack arguments are in the correct
+                // order, and at the bottom of the stack
+
+                let mut argument_count = 0;
+                for _ in register_arguments {
+                    current_address -= 4;
+
+                    instructions.push(Instruction::Lw(
+                        match argument_count {
+                            0 => Register::A0,
+                            1 => Register::A1,
+                            2 => Register::A2,
+                            3 => Register::A3,
+                            4 => Register::A4,
+                            5 => Register::A5,
+                            6 => Register::A6,
+                            7 => Register::A7,
                             _ => unreachable!(),
-                        })
-                    }
+                        },
+                        RegisterWithOffset(current_address.into(), Register::S1),
+                    ));
 
-                    // todo: dynamic size
-                    current_address += 4;
-                    current_argument_count += 1;
+                    argument_count += 1;
                 }
 
-                instructions.push(Instruction::Add(Register::A0, Register::T1, Register::Zero));
+                instructions.push(Instruction::Addi(
+                    Register::Sp,
+                    Register::Sp,
+                    (stack_increase - stack_argument_size).into(),
+                ));
 
-                // the T0 register holds the address of the function
-                // all the arguments are in the A0-A7 registers (or on the stack)
+                // t0 contains the address of the function to call
 
                 instructions.push(Instruction::Jalr(
                     Register::Ra,

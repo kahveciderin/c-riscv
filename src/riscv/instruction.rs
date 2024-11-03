@@ -60,7 +60,6 @@ pub enum Instruction {
 }
 
 // pseudoinstructions list: https://riscv.org/wp-content/uploads/2019/12/riscv-spec-20191213.pdf (page 139, Table 25.2)
-// todo: worry about immediates longer than 12 bits (using additional instructions)
 impl Display for Instruction {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {

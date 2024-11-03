@@ -18,11 +18,11 @@ static mut IDENTIFIER_COUNT: u64 = 0;
 
 pub fn unique_identifier(prefix: Option<&str>, len: Option<usize>) -> String {
     let prefix = match prefix {
-        Some(prefix) => prefix.to_owned() + ".",
-        None => "id.".to_owned(),
+        Some(prefix) => prefix.to_owned() + "____",
+        None => "id____".to_owned(),
     };
 
-    let random_name = random_name(Some(&prefix), len) + "." + &unsafe { IDENTIFIER_COUNT.to_string() };
+    let random_name = "____".to_owned() + &random_name(Some(&prefix), len) + "____"  + &unsafe { IDENTIFIER_COUNT.to_string() };
 
     unsafe {
         IDENTIFIER_COUNT += 1;

@@ -7,7 +7,7 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
-spike pk output/$1.out
+spike  pk output/$1.out # --isa=RV32IMAFDC
 RET_VAL=$?
 echo "Return value: $RET_VAL"
 exit $RET_VAL

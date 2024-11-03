@@ -21,8 +21,6 @@ pub fn parse_function_argument<'s>(input: &mut Stream<'s>) -> PResult<FunctionAr
     let identifier = parse_identifier(input)?;
     let unique_name = unique_identifier(Some(identifier), None);
 
-    println!("argument {identifier}");
-
     Ok(FunctionArgument {
         datatype,
         name: identifier.to_string(),
@@ -35,7 +33,6 @@ pub fn parse_function_definition<'s>(input: &mut Stream<'s>) -> PResult<Function
 
     let return_type = parse_datatype(input)?;
     let name = parse_identifier(input)?;
-    println!("Function: {:?}", name);
 
     parse_open_paren(input)?;
 
@@ -44,7 +41,11 @@ pub fn parse_function_definition<'s>(input: &mut Stream<'s>) -> PResult<Function
 
     parse_close_paren(input)?;
 
-    input.state.start_function_scope(name.to_string());
+    input.state.start_function_scope(
+        name.to_string(),
+        arguments.iter().map(|x| x.datatype.clone()).collect(),
+        return_type.clone(),
+    );
 
     arguments.iter().for_each(|arg| {
         input
