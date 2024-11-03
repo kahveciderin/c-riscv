@@ -22,6 +22,7 @@ impl Compile for ScopeItem {
         match self {
             ScopeItem::Statement(statement) => statement.compile(state),
             ScopeItem::Declaration(declaration) => declaration.compile(state),
+            ScopeItem::FunctionDeclaration(function_declaration) => function_declaration.compile(state),
             ScopeItem::Label(label) => label.compile(state),
         }
     }

@@ -5,6 +5,8 @@ int foo() {
 }
 
 int main() {
+  int boo(void);
+
   int a = foo();
   return a;
 }

@@ -107,12 +107,17 @@ impl Compile for FunctionDefinition<'_> {
                 location: CompilerVariableLocation::Stack,
             });
 
-            instructions.push(Instruction::Comment("Variable ".to_owned() + &variable.unique_name + " at address " + &address.to_string()));
+            instructions.push(Instruction::Comment(
+                "Variable ".to_owned()
+                    + &variable.unique_name
+                    + " at address "
+                    + &address.to_string(),
+            ));
 
             current_address += size as i32;
         }
 
-        let mut current_address = 32 + stack_increase;
+        let mut current_address = 32 + stack_increase; // 32 is for the saved registers
         for stack_variable in self.arguments.iter().skip(8) {
             state.scope.variables.push(CompilerVariable {
                 name: stack_variable.unique_name.clone(),
@@ -147,8 +152,9 @@ impl Compile for FunctionDefinition<'_> {
     }
 }
 
-impl Compile for FunctionDeclaration<'_> {
-    fn compile(&self, state: &mut CompilerState) -> Vec<Instruction> {
+impl Compile for FunctionDeclaration {
+    fn compile(&self, _state: &mut CompilerState) -> Vec<Instruction> {
+        // we don't need to compile function declarations
         vec![]
     }
 }

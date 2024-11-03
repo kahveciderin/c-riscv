@@ -174,3 +174,7 @@ pub fn parse_double_plus<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
 pub fn parse_double_minus<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
     parse_multiple_chars(input, "--")
 }
+
+pub fn parse_void<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "void")
+}

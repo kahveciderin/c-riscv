@@ -3,7 +3,7 @@ use super::function_definition::{FunctionDeclaration, FunctionDefinition};
 #[derive(Debug)]
 pub enum ProgramStatement<'s> {
     FunctionDefinition(FunctionDefinition<'s>),
-    FunctionDeclaration(FunctionDeclaration<'s>),
+    FunctionDeclaration(FunctionDeclaration),
 }
 
 #[derive(Debug)]
