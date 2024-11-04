@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 use super::values::{Immediate, Register, RegisterWithOffset};
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub enum Instruction {
     Comment(String),

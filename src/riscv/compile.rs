@@ -69,49 +69,21 @@ impl CompilerState {
     }
 
     pub fn return_from_function(&mut self) -> Vec<Instruction> {
-        let mut instructions = Vec::new();
-
-        instructions.push(Instruction::Comment(String::from(
-            "Shrinking stack for the locals",
-        )));
-
-        instructions.push(Instruction::Addi(
-            Register::Sp,
-            Register::Sp,
-            (self.scope.variable_size() as i32).into(),
-        ));
-
-        instructions.push(Instruction::Comment(String::from(
-            "Returning the saved variables",
-        )));
-
-        // restore the saved register 1
-        instructions.push(Instruction::Lw(
-            Register::S1,
-            RegisterWithOffset(24.into(), Register::Sp),
-        ));
-
-        // restore the frame pointer
-        instructions.push(Instruction::Lw(
-            Register::Fp,
-            RegisterWithOffset(16.into(), Register::Sp),
-        ));
-
-        // restore the return address
-        instructions.push(Instruction::Lw(
-            Register::Ra,
-            RegisterWithOffset(0.into(), Register::Sp),
-        ));
-
-        // shrink the stack (for the saved variables)
-        instructions.push(Instruction::Addi(Register::Sp, Register::Sp, 32.into()));
-
-        // return
-        instructions.push(Instruction::RetP);
-
-        instructions.push(Instruction::Comment(String::from("return finished")));
-
-        instructions
+        vec![
+            Instruction::Comment(String::from("Shrinking stack for the locals")),
+            Instruction::Addi(
+                Register::Sp,
+                Register::Sp,
+                (self.scope.variable_size() as i32).into(),
+            ),
+            Instruction::Comment(String::from("Returning the saved variables")),
+            Instruction::Lw(Register::S1, RegisterWithOffset(24.into(), Register::Sp)),
+            Instruction::Lw(Register::Fp, RegisterWithOffset(16.into(), Register::Sp)),
+            Instruction::Lw(Register::Ra, RegisterWithOffset(0.into(), Register::Sp)),
+            Instruction::Addi(Register::Sp, Register::Sp, 32.into()),
+            Instruction::RetP,
+            Instruction::Comment(String::from("return finished")),
+        ]
     }
 
     pub fn get_variable(&self, name: &str) -> Option<CompilerVariable> {
@@ -125,23 +97,17 @@ impl CompilerState {
     }
 
     fn push_register_tmp(&mut self, register: Register) -> Vec<Instruction> {
-        let mut instructions = Vec::new();
-        instructions.push(Instruction::Addi(Register::Sp, Register::Sp, (-16).into()));
-        instructions.push(Instruction::Sw(
-            register,
-            RegisterWithOffset(0.into(), Register::Sp),
-        ));
-        instructions
+        vec![
+            Instruction::Addi(Register::Sp, Register::Sp, (-16).into()),
+            Instruction::Sw(register, RegisterWithOffset(0.into(), Register::Sp)),
+        ]
     }
 
     fn pop_register_tmp(&mut self, register: Register) -> Vec<Instruction> {
-        let mut instructions = Vec::new();
-        instructions.push(Instruction::Lw(
-            register,
-            RegisterWithOffset(0.into(), Register::Sp),
-        ));
-        instructions.push(Instruction::Addi(Register::Sp, Register::Sp, (16).into()));
-        instructions
+        vec![
+            Instruction::Lw(register, RegisterWithOffset(0.into(), Register::Sp)),
+            Instruction::Addi(Register::Sp, Register::Sp, (16).into()),
+        ]
     }
 }
 
@@ -166,20 +132,14 @@ impl Compile for ProgramStatement<'_> {
 
 impl Compile for Program<'_> {
     fn compile(&self, state: &mut CompilerState) -> Vec<Instruction> {
-        let mut instructions = Vec::new();
-
-        instructions.push(Instruction::Comment(
-            "Compiler output generated with MY OWN COMPILER".to_owned(),
-        ));
-        instructions.push(Instruction::Comment(
-            "If required, I can provide you with the source code".to_owned(),
-        ));
-        instructions.push(Instruction::Comment(
-            "The compiler is entirely my own work, so this makes".to_owned(),
-        ));
-        instructions.push(Instruction::Comment(
-            "the code below also my own work, which is not plagiarism.".to_owned(),
-        ));
+        let mut instructions = vec![
+            Instruction::Comment("Compiler output generated with MY OWN COMPILER".to_owned()),
+            Instruction::Comment("If required, I can provide you with the source code".to_owned()),
+            Instruction::Comment("The compiler is entirely my own work, so this makes".to_owned()),
+            Instruction::Comment(
+                "the code below also my own work, which is not plagiarism.".to_owned(),
+            ),
+        ];
 
         for function in &self.functions {
             instructions.extend(function.compile(state));

@@ -13,13 +13,13 @@ use super::{
     Case, Stream,
 };
 
-pub fn parse_statement_scope_item<'s>(input: &mut Stream<'s>) -> PResult<ScopeItem> {
+pub fn parse_statement_scope_item(input: &mut Stream<'_>) -> PResult<ScopeItem> {
     parse_whitespace(input)?;
 
     parse_statement.map(ScopeItem::Statement).parse_next(input)
 }
 
-pub fn parse_declaration_scope_item<'s>(input: &mut Stream<'s>) -> PResult<ScopeItem> {
+pub fn parse_declaration_scope_item(input: &mut Stream<'_>) -> PResult<ScopeItem> {
     parse_whitespace(input)?;
 
     combinator::terminated(parse_declaration, parse_semicolon)
@@ -27,7 +27,7 @@ pub fn parse_declaration_scope_item<'s>(input: &mut Stream<'s>) -> PResult<Scope
         .parse_next(input)
 }
 
-pub fn parse_function_declaration_scope_item<'s>(input: &mut Stream<'s>) -> PResult<ScopeItem> {
+pub fn parse_function_declaration_scope_item(input: &mut Stream<'_>) -> PResult<ScopeItem> {
     parse_whitespace(input)?;
 
     parse_function_declaration
@@ -35,7 +35,7 @@ pub fn parse_function_declaration_scope_item<'s>(input: &mut Stream<'s>) -> PRes
         .parse_next(input)
 }
 
-pub fn parse_scope_item<'s>(input: &mut Stream<'s>) -> PResult<ScopeItem> {
+pub fn parse_scope_item(input: &mut Stream<'_>) -> PResult<ScopeItem> {
     parse_whitespace(input)?;
 
     combinator::alt((
@@ -47,7 +47,7 @@ pub fn parse_scope_item<'s>(input: &mut Stream<'s>) -> PResult<ScopeItem> {
     .parse_next(input)
 }
 
-pub fn parse_scope<'s>(input: &mut Stream<'s>) -> PResult<Scope> {
+pub fn parse_scope(input: &mut Stream<'_>) -> PResult<Scope> {
     parse_whitespace(input)?;
 
     input.state.push_scope();

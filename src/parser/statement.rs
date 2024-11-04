@@ -16,7 +16,7 @@ use super::{
     Stream,
 };
 
-pub fn parse_statement<'s>(input: &mut Stream<'s>) -> PResult<Statement> {
+pub fn parse_statement(input: &mut Stream<'_>) -> PResult<Statement> {
     parse_whitespace(input)?;
     combinator::alt((
         parse_jump_statement,
@@ -31,13 +31,13 @@ pub fn parse_statement<'s>(input: &mut Stream<'s>) -> PResult<Statement> {
     .parse_next(input)
 }
 
-pub fn parse_scope_statement<'s>(input: &mut Stream<'s>) -> PResult<Statement> {
+pub fn parse_scope_statement(input: &mut Stream<'_>) -> PResult<Statement> {
     parse_whitespace(input)?;
 
     combinator::seq!(Statement::Scope { scope: parse_scope }).parse_next(input)
 }
 
-pub fn parse_null_statement<'s>(input: &mut Stream<'s>) -> PResult<Statement> {
+pub fn parse_null_statement(input: &mut Stream<'_>) -> PResult<Statement> {
     parse_whitespace(input)?;
 
     combinator::seq!(Statement::Null{
@@ -46,7 +46,7 @@ pub fn parse_null_statement<'s>(input: &mut Stream<'s>) -> PResult<Statement> {
     .parse_next(input)
 }
 
-pub fn parse_expression_statement<'s>(input: &mut Stream<'s>) -> PResult<Statement> {
+pub fn parse_expression_statement(input: &mut Stream<'_>) -> PResult<Statement> {
     parse_whitespace(input)?;
 
     combinator::seq!(Statement::Expression{
@@ -56,7 +56,7 @@ pub fn parse_expression_statement<'s>(input: &mut Stream<'s>) -> PResult<Stateme
     .parse_next(input)
 }
 
-pub fn parse_jump_statement<'s>(input: &mut Stream<'s>) -> PResult<Statement> {
+pub fn parse_jump_statement(input: &mut Stream<'_>) -> PResult<Statement> {
     parse_whitespace(input)?;
 
     combinator::seq!(Statement::Jump {
@@ -65,7 +65,7 @@ pub fn parse_jump_statement<'s>(input: &mut Stream<'s>) -> PResult<Statement> {
     .parse_next(input)
 }
 
-pub fn parse_break_jump<'s>(input: &mut Stream<'s>) -> PResult<JumpStatement> {
+pub fn parse_break_jump(input: &mut Stream<'_>) -> PResult<JumpStatement> {
     parse_whitespace(input)?;
 
     let identifier = parse_identifier(input)?;
@@ -76,15 +76,15 @@ pub fn parse_break_jump<'s>(input: &mut Stream<'s>) -> PResult<JumpStatement> {
     parse_semicolon(input)?;
 
     if let Some(_loop) = input.state.get_loop_or_switch() {
-        return Ok(JumpStatement::Break {
+        Ok(JumpStatement::Break {
             id: _loop.id.clone(),
-        });
+        })
     } else {
         todo!("Error: break statement outside of loop");
     }
 }
 
-pub fn parse_return_jump<'s>(input: &mut Stream<'s>) -> PResult<JumpStatement> {
+pub fn parse_return_jump(input: &mut Stream) -> PResult<JumpStatement> {
     parse_whitespace(input)?;
 
     let identifier = parse_identifier(input)?;
@@ -99,7 +99,7 @@ pub fn parse_return_jump<'s>(input: &mut Stream<'s>) -> PResult<JumpStatement> {
     .parse_next(input)
 }
 
-pub fn parse_continue_jump<'s>(input: &mut Stream<'s>) -> PResult<JumpStatement> {
+pub fn parse_continue_jump(input: &mut Stream) -> PResult<JumpStatement> {
     parse_whitespace(input)?;
 
     let identifier = parse_identifier(input)?;
@@ -110,9 +110,9 @@ pub fn parse_continue_jump<'s>(input: &mut Stream<'s>) -> PResult<JumpStatement>
     parse_semicolon(input)?;
 
     if let Some(_loop) = input.state.get_loop() {
-        return Ok(JumpStatement::Continue {
+        Ok(JumpStatement::Continue {
             id: _loop.id.clone(),
-        });
+        })
     } else {
         todo!("Error: continue statement outside of loop");
     }

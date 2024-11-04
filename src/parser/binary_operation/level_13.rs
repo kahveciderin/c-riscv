@@ -16,7 +16,7 @@ use crate::{
 
 use super::level_12::parse_level_12_expression;
 
-pub fn parse_level_13_ternary_expression<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
+pub fn parse_level_13_ternary_expression(input: &mut Stream<'_>) -> PResult<Expression> {
     parse_whitespace(input)?;
 
     let condition = parse_level_12_expression(input)?;

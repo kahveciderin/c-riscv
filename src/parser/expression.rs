@@ -22,7 +22,7 @@ use super::{
 pub mod datatypes;
 pub mod fold;
 
-pub fn parse_expression<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
+pub fn parse_expression(input: &mut Stream) -> PResult<Expression> {
     parse_whitespace(input)?;
 
     let expression = parse_binary_operation.parse_next(input);
@@ -31,7 +31,7 @@ pub fn parse_expression<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
         expression.get_type(&input.state);
     }
 
-    return expression;
+    expression
 }
 
 pub fn parse_postfix_operator<'s>(input: &'s mut Stream) -> PResult<&'s str> {
@@ -40,7 +40,7 @@ pub fn parse_postfix_operator<'s>(input: &'s mut Stream) -> PResult<&'s str> {
     combinator::alt((parse_double_plus, parse_double_minus, parse_open_paren)).parse_next(input)
 }
 
-pub fn parse_term<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
+pub fn parse_term(input: &mut Stream<'_>) -> PResult<Expression> {
     parse_whitespace(input)?;
 
     let expression = combinator::alt((
@@ -82,13 +82,13 @@ pub fn parse_term<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
     Ok(expression)
 }
 
-pub fn parse_factor<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
+pub fn parse_factor(input: &mut Stream<'_>) -> PResult<Expression> {
     parse_whitespace(input)?;
 
     combinator::alt((parse_term, parse_unary_expression)).parse_next(input)
 }
 
-pub fn parse_variable_expression<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
+pub fn parse_variable_expression(input: &mut Stream<'_>) -> PResult<Expression> {
     parse_whitespace(input)?;
 
     let identifier = parse_identifier(input)?;
@@ -109,13 +109,13 @@ pub fn parse_variable_expression<'s>(input: &mut Stream<'s>) -> PResult<Expressi
             }
         }
     } else {
-        return Err(winnow::error::ErrMode::Backtrack(
+        Err(winnow::error::ErrMode::Backtrack(
             winnow::error::ContextError::new(),
-        ));
+        ))
     }
 }
 
-pub fn parse_paren_expression<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
+pub fn parse_paren_expression(input: &mut Stream<'_>) -> PResult<Expression> {
     parse_whitespace(input)?;
 
     let expression = combinator::seq!(parse_open_paren, parse_expression, parse_close_paren)
@@ -125,13 +125,13 @@ pub fn parse_paren_expression<'s>(input: &mut Stream<'s>) -> PResult<Expression>
     Ok(expression)
 }
 
-pub fn parse_optional_expression<'s>(input: &mut Stream<'s>) -> PResult<Option<Expression>> {
+pub fn parse_optional_expression(input: &mut Stream<'_>) -> PResult<Option<Expression>> {
     parse_whitespace(input)?;
 
     combinator::opt(parse_expression).parse_next(input)
 }
 
-pub fn parse_number_expression<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
+pub fn parse_number_expression(input: &mut Stream<'_>) -> PResult<Expression> {
     parse_whitespace(input)?;
 
     parse_number.map(Expression::Number).parse_next(input)
@@ -151,7 +151,7 @@ pub fn parse_unary_operator<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
     .parse_next(input)
 }
 
-pub fn parse_unary_plus_operation<'s>(input: &mut Stream<'s>) -> PResult<UnaryOp> {
+pub fn parse_unary_plus_operation(input: &mut Stream<'_>) -> PResult<UnaryOp> {
     parse_whitespace(input)?;
 
     parse_factor
@@ -159,7 +159,7 @@ pub fn parse_unary_plus_operation<'s>(input: &mut Stream<'s>) -> PResult<UnaryOp
         .parse_next(input)
 }
 
-pub fn parse_unary_negation_operation<'s>(input: &mut Stream<'s>) -> PResult<UnaryOp> {
+pub fn parse_unary_negation_operation(input: &mut Stream<'_>) -> PResult<UnaryOp> {
     parse_whitespace(input)?;
 
     parse_factor
@@ -167,7 +167,7 @@ pub fn parse_unary_negation_operation<'s>(input: &mut Stream<'s>) -> PResult<Una
         .parse_next(input)
 }
 
-pub fn parse_unary_bitwise_not_operation<'s>(input: &mut Stream<'s>) -> PResult<UnaryOp> {
+pub fn parse_unary_bitwise_not_operation(input: &mut Stream<'_>) -> PResult<UnaryOp> {
     parse_whitespace(input)?;
 
     parse_factor
@@ -175,7 +175,7 @@ pub fn parse_unary_bitwise_not_operation<'s>(input: &mut Stream<'s>) -> PResult<
         .parse_next(input)
 }
 
-pub fn parse_unary_logical_not_operation<'s>(input: &mut Stream<'s>) -> PResult<UnaryOp> {
+pub fn parse_unary_logical_not_operation(input: &mut Stream<'_>) -> PResult<UnaryOp> {
     parse_whitespace(input)?;
 
     parse_factor
@@ -183,14 +183,14 @@ pub fn parse_unary_logical_not_operation<'s>(input: &mut Stream<'s>) -> PResult<
         .parse_next(input)
 }
 
-pub fn parse_prefix_increment_operation<'s>(input: &mut Stream<'s>) -> PResult<UnaryOp> {
+pub fn parse_prefix_increment_operation(input: &mut Stream<'_>) -> PResult<UnaryOp> {
     parse_whitespace(input)?;
 
     parse_factor
         .map(|v| UnaryOp::PrefixIncrement(Arc::new(v)))
         .parse_next(input)
 }
-pub fn parse_prefix_decrement_operation<'s>(input: &mut Stream<'s>) -> PResult<UnaryOp> {
+pub fn parse_prefix_decrement_operation(input: &mut Stream<'_>) -> PResult<UnaryOp> {
     parse_whitespace(input)?;
 
     parse_factor
@@ -198,7 +198,7 @@ pub fn parse_prefix_decrement_operation<'s>(input: &mut Stream<'s>) -> PResult<U
         .parse_next(input)
 }
 
-pub fn parse_unary_operation<'s>(input: &mut Stream<'s>) -> PResult<UnaryOp> {
+pub fn parse_unary_operation(input: &mut Stream<'_>) -> PResult<UnaryOp> {
     parse_whitespace(input)?;
 
     combinator::dispatch! {parse_unary_operator;
@@ -213,7 +213,7 @@ pub fn parse_unary_operation<'s>(input: &mut Stream<'s>) -> PResult<UnaryOp> {
     .parse_next(input)
 }
 
-pub fn parse_unary_expression<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
+pub fn parse_unary_expression(input: &mut Stream<'_>) -> PResult<Expression> {
     parse_whitespace(input)?;
 
     parse_unary_operation

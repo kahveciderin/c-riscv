@@ -11,7 +11,7 @@ use super::{
 };
 use crate::parser::identifier::parse_identifier;
 
-fn parse_declaration_value<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
+fn parse_declaration_value(input: &mut Stream) -> PResult<Expression> {
     parse_whitespace(input)?;
 
     parse_equals(input)?;
@@ -19,7 +19,7 @@ fn parse_declaration_value<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
     parse_expression(input)
 }
 
-pub fn parse_declaration<'s>(input: &mut Stream<'s>) -> PResult<Declaration> {
+pub fn parse_declaration(input: &mut Stream) -> PResult<Declaration> {
     parse_whitespace(input)?;
 
     let data_type = parse_datatype(input)?;

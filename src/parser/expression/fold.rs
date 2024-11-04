@@ -5,7 +5,7 @@ pub trait Fold {
 }
 
 impl Fold for Expression {
-    fn fold(&self, state: &ParserState) -> Option<i32> {
+    fn fold(&self, _state: &ParserState) -> Option<i32> {
         match self {
             Expression::Number(num) => Some(*num),
             Expression::UnaryOp(_) => None,

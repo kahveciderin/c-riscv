@@ -185,7 +185,7 @@ impl Compile for BinaryOp {
                     if let Some(variable) = state.get_variable(name) {
                         instructions.push(Instruction::Sw(
                             Register::A0,
-                            RegisterWithOffset((variable.address as i32).into(), Register::Fp),
+                            RegisterWithOffset(variable.address.into(), Register::Fp),
                         ));
                     } else {
                         // error
@@ -388,7 +388,7 @@ impl Compile for Expression {
                 if let Some(variable) = state.get_variable(name) {
                     instructions.push(Instruction::Lw(
                         Register::A0,
-                        RegisterWithOffset((variable.address as i32).into(), Register::Fp),
+                        RegisterWithOffset(variable.address.into(), Register::Fp),
                     ));
                 } else {
                     // error
@@ -419,8 +419,6 @@ impl Compile for Expression {
                 instructions.push(Instruction::Label(end_of_ternary_label));
             }
             Expression::Call(call) => {
-                let argument_count = call.arguments.len() as u32;
-
                 // riscv integer calling convention states that the first 8 arguments
                 // should reside in a0-a7. If there are more than 8 arguments, the
                 // remaining arguments are allowed to leak into the stack
@@ -479,8 +477,7 @@ impl Compile for Expression {
                 // of the stack, while the stack arguments are in the correct
                 // order, and at the bottom of the stack
 
-                let mut argument_count = 0;
-                for _ in register_arguments.clone() {
+                for (argument_count, _) in register_arguments.clone().enumerate() {
                     current_address -= 4;
 
                     instructions.push(Instruction::Lw(
@@ -497,8 +494,6 @@ impl Compile for Expression {
                         },
                         RegisterWithOffset(current_address.into(), Register::Sp),
                     ));
-
-                    argument_count += 1;
                 }
 
                 instructions.push(Instruction::Addi(
@@ -513,7 +508,6 @@ impl Compile for Expression {
                     Register::Ra,
                     RegisterWithOffset(0.into(), Register::T0),
                 ));
-
 
                 instructions.push(Instruction::Addi(
                     Register::Sp,

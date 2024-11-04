@@ -15,38 +15,18 @@ use super::{Compile, CompilerState, CompilerVariable, CompilerVariableLocation};
 
 impl Compile for FunctionDefinition<'_> {
     fn compile(&self, state: &mut CompilerState) -> Vec<Instruction> {
-        let mut instructions = vec![];
-
-        instructions.push(Instruction::Symbol("globl ".to_string() + &self.name));
-        instructions.push(Instruction::Label(self.name.into()));
-
-        instructions.push(Instruction::Comment("Function Prologue".to_owned()));
-
-        // expand the stack
-        instructions.push(Instruction::Addi(Register::Sp, Register::Sp, (-32).into()));
-
-        // store the return address
-        instructions.push(Instruction::Sw(
-            Register::Ra,
-            RegisterWithOffset(0.into(), Register::Sp),
-        ));
-
-        // store the frame pointer
-        instructions.push(Instruction::Sw(
-            Register::Fp,
-            RegisterWithOffset(16.into(), Register::Sp),
-        ));
-
-        // store the saved register 1
-        instructions.push(Instruction::Sw(
-            Register::S1,
-            RegisterWithOffset(24.into(), Register::Sp),
-        ));
-
-        instructions.push(Instruction::Comment(String::from(
-            "Finished function prologue, now allocating space for variables",
-        )));
-
+        let mut instructions = vec![
+            Instruction::Symbol("globl ".to_string() + self.name),
+            Instruction::Label(self.name.into()),
+            Instruction::Comment("Function Prologue".to_owned()),
+            Instruction::Addi(Register::Sp, Register::Sp, (-32).into()),
+            Instruction::Sw(Register::Ra, RegisterWithOffset(0.into(), Register::Sp)),
+            Instruction::Sw(Register::Fp, RegisterWithOffset(16.into(), Register::Sp)),
+            Instruction::Sw(Register::S1, RegisterWithOffset(24.into(), Register::Sp)),
+            Instruction::Comment(String::from(
+                "Finished function prologue, now allocating space for variables",
+            )),
+        ];
         // handling variables
 
         let function_variables: Vec<_> = self.scope_state.get_only_variables();
@@ -69,8 +49,7 @@ impl Compile for FunctionDefinition<'_> {
         state.scope.variables = Vec::new();
 
         let mut current_address = 0;
-        let mut current_argument = 0;
-        for register_variable in self.arguments.iter().take(8) {
+        for (current_argument, register_variable) in self.arguments.iter().take(8).enumerate() {
             instructions.push(Instruction::Sw(
                 match current_argument {
                     0 => Register::A0,
@@ -93,7 +72,6 @@ impl Compile for FunctionDefinition<'_> {
                 location: CompilerVariableLocation::Stack,
             });
 
-            current_argument += 1;
             current_address += 4; // todo: dynamic size
         }
 

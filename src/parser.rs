@@ -210,7 +210,7 @@ impl ParserState {
                     .iter()
                     .find(|s| s.name == symbol)
                     .map(|s| Arc::new(ParserSymbol::Function(s.clone())).as_ref().clone())
-                    .map(|f| Arc::new(f))
+                    .map(Arc::new)
             })
             .map(|f| f.as_ref().clone())
     }
@@ -241,7 +241,7 @@ impl ParserState {
 
 pub type Stream<'is> = Stateful<&'is str, ParserState>;
 
-pub fn parse_program<'s>(input: &'s str) -> PResult<impl Compile + 's> {
+pub fn parse_program(input: &str) -> PResult<impl Compile + '_> {
     let mut stream = Stream {
         input,
         state: ParserState::new(),

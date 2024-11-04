@@ -63,7 +63,7 @@ pub fn level_14_operation_creator(
     }
 }
 
-fn parse_half_level_14_operation<'s>(input: &mut Stream<'s>) -> PResult<HalfBinaryOp> {
+fn parse_half_level_14_operation(input: &mut Stream<'_>) -> PResult<HalfBinaryOp> {
     parse_whitespace(input)?;
 
     let op = parse_level_14_binary_operator(input)?.to_string();
@@ -72,7 +72,7 @@ fn parse_half_level_14_operation<'s>(input: &mut Stream<'s>) -> PResult<HalfBina
 }
 
 // these operators are right-associative so we handle them in a different way
-pub fn parse_level_14_expression<'s>(input: &mut Stream<'s>) -> PResult<Expression> {
+pub fn parse_level_14_expression(input: &mut Stream<'_>) -> PResult<Expression> {
     parse_whitespace(input)?;
 
     let lhs = parse_level_13_ternary_expression(input)?;
@@ -82,11 +82,11 @@ pub fn parse_level_14_expression<'s>(input: &mut Stream<'s>) -> PResult<Expressi
         let op = level_14_operation_creator(lhs, half_operation.rhs, half_operation.op);
 
         if let Some(op) = op {
-            return Ok(Expression::BinaryOp(op));
+            Ok(Expression::BinaryOp(op))
         } else {
-            return Err(error::ErrMode::Backtrack(error::ContextError::new()));
+            Err(error::ErrMode::Backtrack(error::ContextError::new()))
         }
     } else {
-        return Ok(lhs);
+        Ok(lhs)
     }
 }

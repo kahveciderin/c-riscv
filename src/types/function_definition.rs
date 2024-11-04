@@ -15,6 +15,7 @@ pub struct FunctionArgumentOptionalName {
     pub datatype: Datatype,
 }
 
+#[allow(dead_code)]
 #[derive(Debug)]
 pub struct FunctionDefinition<'s> {
     pub name: &'s str,
@@ -24,6 +25,7 @@ pub struct FunctionDefinition<'s> {
     pub scope_state: ParserScopeState,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct FunctionDeclaration {
     pub name: String,

@@ -156,18 +156,10 @@ impl Compile for JumpStatement {
                 instructions
             }
             JumpStatement::Break { id } => {
-                let mut instructions = Vec::new();
-
-                instructions.push(Instruction::JP(Immediate::Label(id.clone() + "_end")));
-
-                instructions
+                vec![Instruction::JP(Immediate::Label(id.clone() + "_end"))]
             }
             JumpStatement::Continue { id } => {
-                let mut instructions = Vec::new();
-
-                instructions.push(Instruction::JP(Immediate::Label(id.clone() + "_start")));
-
-                instructions
+                vec![Instruction::JP(Immediate::Label(id.clone() + "_start"))]
             }
         }
     }

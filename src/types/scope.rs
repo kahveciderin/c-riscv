@@ -10,6 +10,7 @@ pub enum ScopeItem {
     Label(Label),
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum Label {
     Named(String),

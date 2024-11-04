@@ -9,7 +9,6 @@ use crate::{
         function_definition::{
             FunctionArgument, FunctionArgumentOptionalName, FunctionDeclaration, FunctionDefinition,
         },
-        program::ProgramStatement,
     },
     utils::random_name::unique_identifier,
 };
@@ -33,7 +32,7 @@ fn duplicate_checker(input: impl Iterator<Item = String>) -> bool {
     false
 }
 
-pub fn parse_function_argument<'s>(input: &mut Stream<'s>) -> PResult<FunctionArgument> {
+pub fn parse_function_argument(input: &mut Stream<'_>) -> PResult<FunctionArgument> {
     parse_whitespace(input)?;
     let datatype = parse_datatype(input)?;
     let identifier = parse_identifier(input)?;
@@ -45,8 +44,8 @@ pub fn parse_function_argument<'s>(input: &mut Stream<'s>) -> PResult<FunctionAr
         unique_name,
     })
 }
-pub fn parse_function_argument_with_optional_name<'s>(
-    input: &mut Stream<'s>,
+pub fn parse_function_argument_with_optional_name(
+    input: &mut Stream<'_>,
 ) -> PResult<FunctionArgumentOptionalName> {
     parse_whitespace(input)?;
     let datatype = parse_datatype(input)?;
@@ -78,8 +77,7 @@ pub fn parse_function_definition<'s>(input: &mut Stream<'s>) -> PResult<Function
         .state
         .static_symbols
         .iter()
-        .find(|x| x.name == name)
-        .is_some()
+        .any(|x| x.name == name)
     {
         return Err(winnow::error::ErrMode::Backtrack(
             winnow::error::ContextError::new(),
@@ -117,7 +115,7 @@ pub fn parse_function_definition<'s>(input: &mut Stream<'s>) -> PResult<Function
     })
 }
 
-pub fn parse_function_declaration<'s>(input: &mut Stream<'s>) -> PResult<FunctionDeclaration> {
+pub fn parse_function_declaration(input: &mut Stream<'_>) -> PResult<FunctionDeclaration> {
     parse_whitespace(input)?;
 
     let return_type = parse_datatype(input)?;

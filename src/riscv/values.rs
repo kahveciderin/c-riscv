@@ -2,6 +2,7 @@ use std::fmt::Display;
 
 const USE_ABI_REGISTER_NAMES: bool = true;
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub enum Register {
     Zero = 0,
