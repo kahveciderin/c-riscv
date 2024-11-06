@@ -159,9 +159,15 @@ pub fn parse_unary_operator<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
 pub fn parse_unary_ref_operation(input: &mut Stream<'_>) -> PResult<UnaryOp> {
     parse_whitespace(input)?;
 
-    parse_factor
-        .map(|v| UnaryOp::Ref(Arc::new(v)))
-        .parse_next(input)
+    let factor = parse_factor(input)?;
+
+    let factor_type = factor.get_type(&input.state);
+
+    if let Datatype::Function { .. } = factor_type {
+        return Ok(UnaryOp::Nothing(Arc::new(factor)));
+    }
+
+    Ok(UnaryOp::Ref(Arc::new(factor)))
 }
 
 pub fn parse_unary_deref_operation(input: &mut Stream<'_>) -> PResult<UnaryOp> {

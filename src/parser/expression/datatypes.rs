@@ -54,9 +54,12 @@ impl GetType for UnaryOp {
             UnaryOp::PostfixDecrement(expr) => expr.get_type(state),
             UnaryOp::PrefixIncrement(expr) => expr.get_type(state),
             UnaryOp::PrefixDecrement(expr) => expr.get_type(state),
-            UnaryOp::Ref(expr) => Datatype::Pointer {
-                inner: Arc::new(expr.get_type(state)),
-            },
+            UnaryOp::Ref(expr) => {
+                println!("Ref {:?}", expr.get_type(state));
+                return Datatype::Pointer {
+                    inner: Arc::new(expr.get_type(state)),
+                };
+            }
             UnaryOp::Deref(expr) => {
                 let expression_type = expr.get_type(state);
 
