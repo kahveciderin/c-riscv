@@ -17,18 +17,10 @@ pub struct FunctionArgumentOptionalName {
 
 #[allow(dead_code)]
 #[derive(Debug)]
-pub struct FunctionDefinition<'s> {
-    pub name: &'s str,
+pub struct FunctionDefinition {
+    pub name: String,
     pub arguments: Vec<FunctionArgument>,
     pub return_type: Datatype,
     pub body: Scope,
     pub scope_state: ParserScopeState,
-}
-
-#[allow(dead_code)]
-#[derive(Debug, Clone)]
-pub struct FunctionDeclaration {
-    pub name: String,
-    pub arguments: Vec<FunctionArgumentOptionalName>,
-    pub return_type: Datatype,
 }

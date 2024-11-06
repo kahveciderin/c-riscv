@@ -8,7 +8,7 @@ mod types;
 mod utils;
 
 use parser::parse_program;
-use riscv::compile_program;
+use riscv::{compile_program, optimize_program};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -29,10 +29,11 @@ fn main() {
 
     let ast = parse_program(input).unwrap();
     let compiled_output = compile_program(ast);
+    let compiled_output = optimize_program(compiled_output);
 
     println!("Compiled Output:");
     compiled_output.iter().for_each(|x| {
-        println!("{x}");
+        println!("{x:?}");
     });
 
     let mut file = File::create(output_file_path).unwrap();

@@ -19,6 +19,7 @@ pub struct Call {
 
 #[derive(Debug, Clone)]
 pub enum UnaryOp {
+    Nothing(Arc<Expression>),
     Plus(Arc<Expression>),
     Negation(Arc<Expression>),
     BitwiseNot(Arc<Expression>),
@@ -27,6 +28,8 @@ pub enum UnaryOp {
     PostfixDecrement(Arc<Expression>),
     PrefixIncrement(Arc<Expression>),
     PrefixDecrement(Arc<Expression>),
+    Ref(Arc<Expression>),
+    Deref(Arc<Expression>),
 }
 
 #[derive(Debug, Clone)]

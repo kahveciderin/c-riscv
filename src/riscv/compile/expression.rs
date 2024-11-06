@@ -16,6 +16,9 @@ impl Compile for UnaryOp {
         let mut instructions = Vec::new();
 
         match self {
+            UnaryOp::Nothing(expression) => {
+                instructions.extend(expression.compile(state));
+            }
             UnaryOp::Negation(expression) => {
                 instructions.extend(expression.compile(state));
                 instructions.push(Instruction::Neg(Register::A0, Register::A0));
@@ -57,6 +60,20 @@ impl Compile for UnaryOp {
                 instructions.extend(equivalent.compile(state));
                 instructions.push(Instruction::Addi(Register::A0, Register::A0, (-1).into()));
             }
+            UnaryOp::Ref(expression) => {
+                let lvalue = expression
+                    .as_lvalue(state)
+                    .unwrap_or_else(|| panic!("Cannot get a reference to non-lvalue"));
+                instructions.extend(lvalue);
+            }
+            UnaryOp::Deref(expression) => {
+                instructions.extend(expression.compile(state));
+
+                instructions.push(Instruction::Lw(
+                    Register::A0,
+                    RegisterWithOffset(0.into(), Register::A0),
+                ));
+            }
         };
 
         instructions
@@ -66,9 +83,9 @@ impl Compile for UnaryOp {
 macro_rules! binary_op_inner {
     ($instructions:ident, $lhs:ident, $rhs:ident, $compiler_state:ident, $body:block) => {{
         $instructions.extend($lhs.compile($compiler_state));
-        $instructions.extend($compiler_state.push_register_tmp(Register::A0));
+        $instructions.push(Instruction::PushP(Register::A0));
         $instructions.extend($rhs.compile($compiler_state));
-        $instructions.extend($compiler_state.pop_register_tmp(Register::A1));
+        $instructions.push(Instruction::PopP(Register::A1));
 
         // at this point, A0 contains the value of rhs and A1 contains the value of lhs
         $body
@@ -181,20 +198,18 @@ impl Compile for BinaryOp {
 
             BinaryOp::Assignment(lhs, rhs) => {
                 instructions.extend(rhs.compile(state));
-                if let Expression::Variable(name) = lhs.as_ref() {
-                    if let Some(variable) = state.get_variable(name) {
-                        instructions.push(Instruction::Sw(
-                            Register::A0,
-                            RegisterWithOffset(variable.address.into(), Register::Fp),
-                        ));
-                    } else {
-                        // error
-                        todo!("Assignment lhs variable not found");
-                    }
-                } else {
-                    // error
-                    todo!("Assignment lhs invalid error");
-                }
+                instructions.push(Instruction::PushP(Register::A0));
+
+                let lvalue = lhs
+                    .as_lvalue(state)
+                    .unwrap_or_else(|| panic!("Cannot assign to non-lvalue"));
+
+                instructions.extend(lvalue);
+                instructions.push(Instruction::PopP(Register::A1));
+                instructions.push(Instruction::Sw(
+                    Register::A1,
+                    RegisterWithOffset(0.into(), Register::A0),
+                ))
             }
 
             BinaryOp::AssignmentAddition(lhs, rhs) => {
@@ -518,5 +533,37 @@ impl Compile for Expression {
         };
 
         instructions
+    }
+}
+
+trait AsLhs {
+    fn as_lvalue(&self, state: &mut CompilerState) -> Option<Vec<Instruction>>;
+}
+
+impl AsLhs for Expression {
+    fn as_lvalue(&self, state: &mut CompilerState) -> Option<Vec<Instruction>> {
+        match self {
+            Expression::Number(_)
+            | Expression::BinaryOp(_)
+            | Expression::FunctionSymbol(_)
+            | Expression::TernaryOp(_)
+            | Expression::Call(_) => None,
+
+            Expression::Variable(name) => {
+                if let Some(variable) = state.get_variable(name) {
+                    Some(vec![Instruction::Addi(
+                        Register::A0,
+                        Register::Fp,
+                        variable.address.into(),
+                    )])
+                } else {
+                    None
+                }
+            }
+            Expression::UnaryOp(op) => match op {
+                UnaryOp::Deref(expression) => Some(expression.compile(state)),
+                _ => None,
+            },
+        }
     }
 }

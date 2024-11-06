@@ -3,7 +3,7 @@ use std::fmt::Display;
 use super::values::{Immediate, Register, RegisterWithOffset};
 
 #[allow(dead_code)]
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Instruction {
     Comment(String),
     Label(String),
@@ -58,6 +58,11 @@ pub enum Instruction {
     SeqzP(Register, Register),
     SnezP(Register, Register),
     SeqP(Register, Register, Register),
+
+    // misc
+    MvP(Register, Register),
+    PushP(Register),
+    PopP(Register),
 }
 
 // pseudoinstructions list: https://riscv.org/wp-content/uploads/2019/12/riscv-spec-20191213.pdf (page 139, Table 25.2)
@@ -102,13 +107,169 @@ impl Display for Instruction {
             Instruction::LaP(rd, imm) => write!(f, "la {}, {}", rd, imm),
             Instruction::SeqP(rd, rs1, rs2) => {
                 Instruction::Xor(rd.clone(), rs1.clone(), rs2.clone()).fmt(f)?;
-
                 "\n".fmt(f)?;
-
                 Instruction::SeqzP(rd.clone(), rd.clone()).fmt(f)?;
 
                 Ok(())
             }
+            Instruction::MvP(rd, rs1) => write!(f, "mv {}, {}", rd, rs1),
+            Instruction::PushP(rs1) => {
+                Instruction::Addi(Register::Sp, Register::Sp, (-16).into()).fmt(f)?;
+                "\n".fmt(f)?;
+                Instruction::Sw(rs1.clone(), RegisterWithOffset(0.into(), Register::Sp)).fmt(f)?;
+
+                Ok(())
+            }
+            Instruction::PopP(rd) => {
+                Instruction::Lw(rd.clone(), RegisterWithOffset(0.into(), Register::Sp)).fmt(f)?;
+                "\n".fmt(f)?;
+                Instruction::Addi(Register::Sp, Register::Sp, 16.into()).fmt(f)?;
+
+                Ok(())
+            }
+        }
+    }
+}
+
+impl Instruction {
+    pub fn get_destination_register(&self) -> Option<Register> {
+        match self {
+            Instruction::Comment(_)
+            | Instruction::Label(_)
+            | Instruction::Symbol(_)
+            | Instruction::Sw(_, _)
+            | Instruction::Sd(_, _)
+            | Instruction::JP(_)
+            | Instruction::CallP(_)
+            | Instruction::RetP
+            | Instruction::Beq(_, _, _)
+            | Instruction::BeqzP(_, _)
+            | Instruction::Bne(_, _, _)
+            | Instruction::BnezP(_, _)
+            | Instruction::PushP(_) => None,
+
+            Instruction::Neg(rd, _)
+            | Instruction::NotP(rd, _)
+            | Instruction::MvP(rd, _)
+            | Instruction::Add(rd, _, _)
+            | Instruction::Addi(rd, _, _)
+            | Instruction::Sub(rd, _, _)
+            | Instruction::Mul(rd, _, _)
+            | Instruction::Div(rd, _, _)
+            | Instruction::Rem(rd, _, _)
+            | Instruction::And(rd, _, _)
+            | Instruction::Or(rd, _, _)
+            | Instruction::Xor(rd, _, _)
+            | Instruction::Xori(rd, _, _)
+            | Instruction::Sll(rd, _, _)
+            | Instruction::Srl(rd, _, _)
+            | Instruction::LiP(rd, _)
+            | Instruction::Lw(rd, _)
+            | Instruction::Ld(rd, _)
+            | Instruction::Jal(rd, _)
+            | Instruction::Jalr(rd, _)
+            | Instruction::LaP(rd, _)
+            | Instruction::Sltu(rd, _, _)
+            | Instruction::Sltiu(rd, _, _)
+            | Instruction::SeqzP(rd, _)
+            | Instruction::SnezP(rd, _)
+            | Instruction::SeqP(rd, _, _)
+            | Instruction::PopP(rd) => Some(rd.clone()),
+        }
+    }
+
+    pub fn set_destination_register(&mut self, register: Register) {
+        match self {
+            Instruction::Comment(_)
+            | Instruction::Label(_)
+            | Instruction::Symbol(_)
+            | Instruction::Sw(_, _)
+            | Instruction::Sd(_, _)
+            | Instruction::JP(_)
+            | Instruction::CallP(_)
+            | Instruction::RetP
+            | Instruction::Beq(_, _, _)
+            | Instruction::BeqzP(_, _)
+            | Instruction::Bne(_, _, _)
+            | Instruction::BnezP(_, _)
+            | Instruction::PushP(_) => (),
+
+            Instruction::Neg(rd, _)
+            | Instruction::NotP(rd, _)
+            | Instruction::MvP(rd, _)
+            | Instruction::Add(rd, _, _)
+            | Instruction::Addi(rd, _, _)
+            | Instruction::Sub(rd, _, _)
+            | Instruction::Mul(rd, _, _)
+            | Instruction::Div(rd, _, _)
+            | Instruction::Rem(rd, _, _)
+            | Instruction::And(rd, _, _)
+            | Instruction::Or(rd, _, _)
+            | Instruction::Xor(rd, _, _)
+            | Instruction::Xori(rd, _, _)
+            | Instruction::Sll(rd, _, _)
+            | Instruction::Srl(rd, _, _)
+            | Instruction::LiP(rd, _)
+            | Instruction::Lw(rd, _)
+            | Instruction::Ld(rd, _)
+            | Instruction::Jal(rd, _)
+            | Instruction::Jalr(rd, _)
+            | Instruction::LaP(rd, _)
+            | Instruction::Sltu(rd, _, _)
+            | Instruction::Sltiu(rd, _, _)
+            | Instruction::SeqzP(rd, _)
+            | Instruction::SnezP(rd, _)
+            | Instruction::SeqP(rd, _, _)
+            | Instruction::PopP(rd) => {
+                *rd = register;
+            }
+        }
+    }
+
+    pub fn does_jump(&self) -> bool {
+        match self {
+            Instruction::JP(_)
+            | Instruction::Jal(_, _)
+            | Instruction::Jalr(_, _)
+            | Instruction::CallP(_)
+            | Instruction::RetP
+            | Instruction::Beq(_, _, _)
+            | Instruction::BeqzP(_, _)
+            | Instruction::Bne(_, _, _)
+            | Instruction::BnezP(_, _) => true,
+            _ => false,
+        }
+    }
+
+    pub fn convert_to_equivalent(&self) -> Vec<Instruction> {
+        match self {
+            Instruction::Addi(rd, rs1, imm) => {
+                if *imm == Immediate::Number(0) {
+                    Instruction::Add(rd.clone(), rs1.clone(), Register::Zero)
+                        .convert_to_equivalent()
+                } else if *rs1 == Register::Zero {
+                    Instruction::LiP(rd.clone(), imm.clone()).convert_to_equivalent()
+                } else {
+                    vec![self.clone()]
+                }
+            }
+            Instruction::Add(rd, rs1, rs2) => {
+                if *rs1 == Register::Zero {
+                    Instruction::MvP(rd.clone(), rs2.clone()).convert_to_equivalent()
+                } else if *rs2 == Register::Zero {
+                    Instruction::MvP(rd.clone(), rs1.clone()).convert_to_equivalent()
+                } else {
+                    vec![self.clone()]
+                }
+            }
+            Instruction::MvP(rd, rs1) => {
+                if *rd == *rs1 {
+                    vec![]
+                } else {
+                    vec![self.clone()]
+                }
+            }
+            _ => vec![self.clone()],
         }
     }
 }

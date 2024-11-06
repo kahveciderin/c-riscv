@@ -5,7 +5,6 @@ use crate::types::scope::{Label, Scope, ScopeItem};
 use super::{
     declaration::parse_declaration,
     expression::{fold::Fold, parse_expression},
-    function_definition::parse_function_declaration,
     identifier::parse_identifier,
     statement::parse_statement,
     trivial_tokens::{parse_close_scope, parse_colon, parse_open_scope, parse_semicolon},
@@ -27,19 +26,10 @@ pub fn parse_declaration_scope_item(input: &mut Stream<'_>) -> PResult<ScopeItem
         .parse_next(input)
 }
 
-pub fn parse_function_declaration_scope_item(input: &mut Stream<'_>) -> PResult<ScopeItem> {
-    parse_whitespace(input)?;
-
-    parse_function_declaration
-        .map(ScopeItem::FunctionDeclaration)
-        .parse_next(input)
-}
-
 pub fn parse_scope_item(input: &mut Stream<'_>) -> PResult<ScopeItem> {
     parse_whitespace(input)?;
 
     combinator::alt((
-        parse_function_declaration_scope_item,
         parse_declaration_scope_item,
         parse_statement_scope_item,
         parse_label,

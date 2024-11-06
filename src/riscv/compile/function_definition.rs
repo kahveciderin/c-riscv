@@ -4,20 +4,18 @@ use crate::{
         values::{Register, RegisterWithOffset},
     },
     types::{
-        expression::Expression,
-        function_definition::{FunctionDeclaration, FunctionDefinition},
-        statement::JumpStatement,
+        expression::Expression, function_definition::FunctionDefinition, statement::JumpStatement,
     },
     utils::nearest_multiple::nearest_multiple,
 };
 
 use super::{Compile, CompilerState, CompilerVariable, CompilerVariableLocation};
 
-impl Compile for FunctionDefinition<'_> {
+impl Compile for FunctionDefinition {
     fn compile(&self, state: &mut CompilerState) -> Vec<Instruction> {
         let mut instructions = vec![
-            Instruction::Symbol("globl ".to_string() + self.name),
-            Instruction::Label(self.name.into()),
+            Instruction::Symbol("globl ".to_string() + &self.name),
+            Instruction::Label(self.name.clone()),
             Instruction::Comment("Function Prologue".to_owned()),
             Instruction::Addi(Register::Sp, Register::Sp, (-32).into()),
             Instruction::Sw(Register::Ra, RegisterWithOffset(0.into(), Register::Sp)),
@@ -127,12 +125,5 @@ impl Compile for FunctionDefinition<'_> {
         // state.decrease_stack_size(32);
 
         instructions
-    }
-}
-
-impl Compile for FunctionDeclaration {
-    fn compile(&self, _state: &mut CompilerState) -> Vec<Instruction> {
-        // we don't need to compile function declarations
-        vec![]
     }
 }

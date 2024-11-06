@@ -5,7 +5,10 @@ use winnow::{combinator, PResult, Parser};
 
 use crate::{
     parser::{identifier::parse_identifier, trivial_tokens::parse_comma},
-    types::expression::{Call, Expression, UnaryOp},
+    types::{
+        datatype::Datatype,
+        expression::{Call, Expression, UnaryOp},
+    },
 };
 
 use super::{
@@ -13,7 +16,7 @@ use super::{
     number::parse_number,
     trivial_tokens::{
         parse_bang, parse_close_paren, parse_double_minus, parse_double_plus, parse_minus,
-        parse_open_paren, parse_plus, parse_tilda,
+        parse_open_paren, parse_plus, parse_pointer_ampersand, parse_star, parse_tilda,
     },
     whitespace::parse_whitespace,
     ParserSymbol, Stream,
@@ -141,6 +144,8 @@ pub fn parse_unary_operator<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
     parse_whitespace(input)?;
 
     combinator::alt((
+        parse_pointer_ampersand,
+        parse_star,
         parse_plus,
         parse_minus,
         parse_tilda,
@@ -149,6 +154,28 @@ pub fn parse_unary_operator<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
         parse_double_minus,
     ))
     .parse_next(input)
+}
+
+pub fn parse_unary_ref_operation(input: &mut Stream<'_>) -> PResult<UnaryOp> {
+    parse_whitespace(input)?;
+
+    parse_factor
+        .map(|v| UnaryOp::Ref(Arc::new(v)))
+        .parse_next(input)
+}
+
+pub fn parse_unary_deref_operation(input: &mut Stream<'_>) -> PResult<UnaryOp> {
+    parse_whitespace(input)?;
+
+    let factor = parse_factor(input)?;
+
+    let factor_type = factor.get_type(&input.state);
+
+    if let Datatype::Function { .. } = factor_type {
+        return Ok(UnaryOp::Nothing(Arc::new(factor)));
+    }
+
+    Ok(UnaryOp::Deref(Arc::new(factor)))
 }
 
 pub fn parse_unary_plus_operation(input: &mut Stream<'_>) -> PResult<UnaryOp> {
@@ -208,6 +235,8 @@ pub fn parse_unary_operation(input: &mut Stream<'_>) -> PResult<UnaryOp> {
         "!" => parse_unary_logical_not_operation,
         "++" => parse_prefix_increment_operation,
         "--" => parse_prefix_decrement_operation,
+        "&" => parse_unary_ref_operation,
+        "*" => parse_unary_deref_operation,
         _ => combinator::fail
     }
     .parse_next(input)

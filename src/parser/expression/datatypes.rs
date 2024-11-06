@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::{
     parser::{ParserState, ParserSymbol},
     types::{
@@ -43,6 +45,7 @@ impl GetType for Expression {
 impl GetType for UnaryOp {
     fn get_type(&self, state: &ParserState) -> Datatype {
         match self {
+            UnaryOp::Nothing(expr) => expr.get_type(state),
             UnaryOp::Plus(expr) => expr.get_type(state),
             UnaryOp::Negation(expr) => expr.get_type(state),
             UnaryOp::BitwiseNot(expr) => expr.get_type(state),
@@ -51,6 +54,27 @@ impl GetType for UnaryOp {
             UnaryOp::PostfixDecrement(expr) => expr.get_type(state),
             UnaryOp::PrefixIncrement(expr) => expr.get_type(state),
             UnaryOp::PrefixDecrement(expr) => expr.get_type(state),
+            UnaryOp::Ref(expr) => Datatype::Pointer {
+                inner: Arc::new(expr.get_type(state)),
+            },
+            UnaryOp::Deref(expr) => {
+                let expression_type = expr.get_type(state);
+
+                if let Datatype::Pointer { inner } = expression_type {
+                    inner.as_ref().clone()
+                } else if let Datatype::Function {
+                    arguments,
+                    return_type,
+                } = expression_type
+                {
+                    Datatype::Function {
+                        arguments,
+                        return_type,
+                    }
+                } else {
+                    panic!("Trying to dereference non-pointer value")
+                }
+            }
         }
     }
 }
@@ -109,7 +133,7 @@ impl GetType for Call {
     fn get_type(&self, state: &ParserState) -> Datatype {
         let function = self.expression.get_type(state);
 
-        let return_type = if let Datatype::FunctionPointer {
+        let return_type = if let Datatype::Function {
             ref return_type, ..
         } = function
         {
@@ -118,7 +142,7 @@ impl GetType for Call {
             panic!("Call expression is not a function");
         };
 
-        if let Datatype::FunctionPointer { ref arguments, .. } = function {
+        if let Datatype::Function { ref arguments, .. } = function {
             if self.arguments.len() != arguments.len() {
                 panic!("Incorrect number of arguments in function call");
             }
@@ -132,7 +156,7 @@ impl GetType for Call {
 
                 let expected_arg = &arguments[i];
 
-                if arg_type != *expected_arg {
+                if arg_type != *expected_arg.datatype {
                     panic!("Argument type does not match expected type");
                 }
             }

@@ -3,12 +3,11 @@ use std::sync::Arc;
 use winnow::{PResult, Parser, Stateful};
 
 use crate::{
-    riscv::compile::Compile, types::datatype::Datatype, utils::random_name::unique_identifier,
+    riscv::compile::Compile, types::datatype::{Argument, Datatype}, utils::random_name::unique_identifier,
 };
 
-mod datatype;
 mod declaration;
-mod expression;
+pub mod expression;
 mod function_definition;
 mod identifier;
 mod number;
@@ -189,10 +188,10 @@ impl ParserState {
         self.static_symbols.push(symbol);
     }
 
-    pub fn start_function_scope(&mut self, name: String, arguments: Vec<Datatype>, ret: Datatype) {
+    pub fn start_function_scope(&mut self, name: String, arguments: Vec<Argument>, ret: Datatype) {
         self.add_static_symbol(ParserStaticSymbol {
             name,
-            datatype: Datatype::FunctionPointer {
+            datatype: Datatype::Function {
                 return_type: Arc::new(ret),
                 arguments,
             },

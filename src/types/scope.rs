@@ -1,12 +1,9 @@
-use super::{
-    declaration::Declaration, function_definition::FunctionDeclaration, statement::Statement,
-};
+use super::{declaration::Declaration, statement::Statement};
 
 #[derive(Debug, Clone)]
 pub enum ScopeItem {
     Statement(Statement),
     Declaration(Declaration),
-    FunctionDeclaration(FunctionDeclaration),
     Label(Label),
 }
 

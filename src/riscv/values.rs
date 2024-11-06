@@ -3,7 +3,7 @@ use std::fmt::Display;
 const USE_ABI_REGISTER_NAMES: bool = true;
 
 #[allow(dead_code)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Register {
     Zero = 0,
     Ra = 1,
@@ -85,7 +85,7 @@ impl Display for Register {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct RegisterWithOffset(pub Immediate, pub Register);
 
 impl Display for RegisterWithOffset {
@@ -93,7 +93,7 @@ impl Display for RegisterWithOffset {
         write!(f, "{}({})", self.0, self.1)
     }
 }
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Immediate {
     Label(String),
     Number(i32),

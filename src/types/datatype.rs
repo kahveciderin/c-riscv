@@ -1,11 +1,20 @@
 use std::sync::Arc;
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct Argument {
+    pub name: String,
+    pub datatype: Arc<Datatype>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum Datatype {
     Int,
-    FunctionPointer {
+    Function {
         return_type: Arc<Datatype>,
-        arguments: Vec<Datatype>,
+        arguments: Vec<Argument>,
+    },
+    Pointer {
+        inner: Arc<Datatype>,
     },
 }
 
@@ -13,7 +22,8 @@ impl Datatype {
     pub fn size(&self) -> usize {
         match self {
             Datatype::Int => 4,
-            Datatype::FunctionPointer { .. } => 4,
+            Datatype::Function { .. } => 0, // Functions don't have a size
+            Datatype::Pointer { .. } => 4,
         }
     }
 }

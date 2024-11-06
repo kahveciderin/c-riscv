@@ -178,3 +178,7 @@ pub fn parse_double_minus<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
 pub fn parse_void<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
     parse_multiple_chars(input, "void")
 }
+
+pub fn parse_pointer_ampersand<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars_not_followed_by(input, "&", &[])
+}

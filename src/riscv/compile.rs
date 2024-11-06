@@ -95,20 +95,6 @@ impl CompilerState {
 
         None
     }
-
-    fn push_register_tmp(&mut self, register: Register) -> Vec<Instruction> {
-        vec![
-            Instruction::Addi(Register::Sp, Register::Sp, (-16).into()),
-            Instruction::Sw(register, RegisterWithOffset(0.into(), Register::Sp)),
-        ]
-    }
-
-    fn pop_register_tmp(&mut self, register: Register) -> Vec<Instruction> {
-        vec![
-            Instruction::Lw(register, RegisterWithOffset(0.into(), Register::Sp)),
-            Instruction::Addi(Register::Sp, Register::Sp, (16).into()),
-        ]
-    }
 }
 
 pub trait Compile {
@@ -121,16 +107,15 @@ mod function_definition;
 mod scope;
 mod statement;
 
-impl Compile for ProgramStatement<'_> {
+impl Compile for ProgramStatement {
     fn compile(&self, state: &mut CompilerState) -> Vec<Instruction> {
         match self {
             ProgramStatement::FunctionDefinition(function) => function.compile(state),
-            ProgramStatement::FunctionDeclaration(declaration) => declaration.compile(state),
         }
     }
 }
 
-impl Compile for Program<'_> {
+impl Compile for Program {
     fn compile(&self, state: &mut CompilerState) -> Vec<Instruction> {
         let mut instructions = vec![
             Instruction::Comment("Compiler output generated with MY OWN COMPILER".to_owned()),

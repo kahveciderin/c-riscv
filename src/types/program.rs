@@ -1,12 +1,11 @@
-use super::function_definition::{FunctionDeclaration, FunctionDefinition};
+use super::function_definition::FunctionDefinition;
 
 #[derive(Debug)]
-pub enum ProgramStatement<'s> {
-    FunctionDefinition(FunctionDefinition<'s>),
-    FunctionDeclaration(FunctionDeclaration),
+pub enum ProgramStatement {
+    FunctionDefinition(FunctionDefinition),
 }
 
 #[derive(Debug)]
-pub struct Program<'s> {
-    pub functions: Vec<ProgramStatement<'s>>,
+pub struct Program {
+    pub functions: Vec<ProgramStatement>,
 }
