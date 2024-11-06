@@ -161,6 +161,7 @@ impl Compile for JumpStatement {
             JumpStatement::Continue { id } => {
                 vec![Instruction::JP(Immediate::Label(id.clone() + "_start"))]
             }
+            JumpStatement::__Ebreak => vec![Instruction::EBreak],
         }
     }
 }

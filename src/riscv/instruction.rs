@@ -63,6 +63,7 @@ pub enum Instruction {
     MvP(Register, Register),
     PushP(Register),
     PopP(Register),
+    EBreak,
 }
 
 // pseudoinstructions list: https://riscv.org/wp-content/uploads/2019/12/riscv-spec-20191213.pdf (page 139, Table 25.2)
@@ -126,7 +127,8 @@ impl Display for Instruction {
                 Instruction::Addi(Register::Sp, Register::Sp, 16.into()).fmt(f)?;
 
                 Ok(())
-            }
+            },
+            Instruction::EBreak => write!(f, "ebreak"),
         }
     }
 }
@@ -146,6 +148,7 @@ impl Instruction {
             | Instruction::BeqzP(_, _)
             | Instruction::Bne(_, _, _)
             | Instruction::BnezP(_, _)
+            | Instruction::EBreak
             | Instruction::PushP(_) => None,
 
             Instruction::Neg(rd, _)
@@ -192,6 +195,7 @@ impl Instruction {
             | Instruction::BeqzP(_, _)
             | Instruction::Bne(_, _, _)
             | Instruction::BnezP(_, _)
+            | Instruction::EBreak
             | Instruction::PushP(_) => (),
 
             Instruction::Neg(rd, _)

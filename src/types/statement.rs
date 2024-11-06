@@ -9,6 +9,7 @@ pub enum JumpStatement {
     Return { expression: Option<Expression> },
     Break { id: String },
     Continue { id: String },
+    __Ebreak,
 }
 
 #[derive(Debug, Clone)]

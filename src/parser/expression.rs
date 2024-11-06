@@ -175,7 +175,10 @@ pub fn parse_unary_deref_operation(input: &mut Stream<'_>) -> PResult<UnaryOp> {
 
     let factor = parse_factor(input)?;
 
-    let factor_type = factor.get_type(&input.state);
+    let mut factor_type = factor.get_type(&input.state);
+    while let Datatype::Pointer { inner } = factor_type {
+        factor_type = inner.as_ref().clone();
+    }
 
     if let Datatype::Function { .. } = factor_type {
         return Ok(UnaryOp::Nothing(Arc::new(factor)));

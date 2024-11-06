@@ -60,9 +60,27 @@ pub fn parse_jump_statement(input: &mut Stream<'_>) -> PResult<Statement> {
     parse_whitespace(input)?;
 
     combinator::seq!(Statement::Jump {
-        statement: combinator::alt((parse_break_jump, parse_return_jump, parse_continue_jump))
+        statement: combinator::alt((
+            parse_break_jump,
+            parse_return_jump,
+            parse_continue_jump,
+            parse_ebreak_jump
+        ))
     })
     .parse_next(input)
+}
+
+pub fn parse_ebreak_jump(input: &mut Stream<'_>) -> PResult<JumpStatement> {
+    parse_whitespace(input)?;
+
+    let identifier = parse_identifier(input)?;
+    if identifier != "__ebreak" {
+        return Err(error::ErrMode::Backtrack(error::ContextError::new()));
+    }
+
+    parse_semicolon(input)?;
+
+    Ok(JumpStatement::__Ebreak)
 }
 
 pub fn parse_break_jump(input: &mut Stream<'_>) -> PResult<JumpStatement> {

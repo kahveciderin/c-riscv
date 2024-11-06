@@ -136,37 +136,46 @@ impl GetType for Call {
     fn get_type(&self, state: &ParserState) -> Datatype {
         let function = self.expression.get_type(state);
 
-        let return_type = if let Datatype::Function {
-            ref return_type, ..
+        println!("function {function:?}");
+
+        let (return_type, arguments) = if let Datatype::Function {
+            return_type,
+            arguments,
         } = function
         {
-            return_type.as_ref().clone()
+            (return_type, arguments)
+        } else if let Datatype::Pointer { inner } = function {
+            if let Datatype::Function {
+                return_type,
+                arguments,
+            } = inner.as_ref().clone()
+            {
+                (return_type, arguments)
+            } else {
+                panic!("Call expression is not a function");
+            }
         } else {
             panic!("Call expression is not a function");
         };
 
-        if let Datatype::Function { ref arguments, .. } = function {
-            if self.arguments.len() != arguments.len() {
-                panic!("Incorrect number of arguments in function call");
-            }
-
-            for (i, arg) in self.arguments.iter().enumerate() {
-                let arg_type = arg.get_type(state);
-
-                if arguments.len() <= i {
-                    panic!("Too many arguments in function call");
-                }
-
-                let expected_arg = &arguments[i];
-
-                if arg_type != *expected_arg.datatype {
-                    panic!("Argument type does not match expected type");
-                }
-            }
-        } else {
-            panic!("Call expression is not a function");
+        if self.arguments.len() != arguments.len() {
+            panic!("Incorrect number of arguments in function call");
         }
 
-        return_type
+        for (i, arg) in self.arguments.iter().enumerate() {
+            let arg_type = arg.get_type(state);
+
+            if arguments.len() <= i {
+                panic!("Too many arguments in function call");
+            }
+
+            let expected_arg = &arguments[i];
+
+            if arg_type != *expected_arg.datatype {
+                panic!("Argument type does not match expected type");
+            }
+        }
+
+        return_type.as_ref().clone()
     }
 }
