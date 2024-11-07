@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Expression {
     Number(i32),
     UnaryOp(UnaryOp),
@@ -11,13 +11,13 @@ pub enum Expression {
     Call(Call),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Call {
     pub expression: Arc<Expression>,
     pub arguments: Vec<Expression>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum UnaryOp {
     Nothing(Arc<Expression>),
     Plus(Arc<Expression>),
@@ -32,7 +32,7 @@ pub enum UnaryOp {
     Deref(Arc<Expression>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum BinaryOp {
     Addition(Arc<Expression>, Arc<Expression>),
     Subtraction(Arc<Expression>, Arc<Expression>),
@@ -63,9 +63,10 @@ pub enum BinaryOp {
     AssignmentBitwiseAnd(Arc<Expression>, Arc<Expression>),
     AssignmentBitwiseXor(Arc<Expression>, Arc<Expression>),
     AssignmentBitwiseOr(Arc<Expression>, Arc<Expression>),
+    Comma(Arc<Expression>, Arc<Expression>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TernaryOp {
     pub condition: Arc<Expression>,
     pub then_expr: Arc<Expression>,

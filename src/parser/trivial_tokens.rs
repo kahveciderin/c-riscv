@@ -35,6 +35,13 @@ pub fn parse_close_scope<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
     parse_multiple_chars(input, "}")
 }
 
+pub fn parse_open_bracket<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "[")
+}
+pub fn parse_close_bracket<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
+    parse_multiple_chars(input, "]")
+}
+
 pub fn parse_semicolon<'s>(input: &mut Stream<'s>) -> PResult<&'s str> {
     parse_multiple_chars(input, ";")
 }

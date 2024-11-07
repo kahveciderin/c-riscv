@@ -115,6 +115,7 @@ impl GetType for BinaryOp {
             BinaryOp::AssignmentBitwiseAnd(left, _) => left.get_type(state),
             BinaryOp::AssignmentBitwiseOr(left, _) => left.get_type(state),
             BinaryOp::AssignmentBitwiseXor(left, _) => left.get_type(state),
+            BinaryOp::Comma(_, right) => right.get_type(state),
         }
     }
 }

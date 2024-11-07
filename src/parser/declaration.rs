@@ -13,7 +13,10 @@ use crate::{
 
 use super::{
     expression::parse_expression,
-    trivial_tokens::{parse_close_paren, parse_equals, parse_open_paren, parse_star, parse_void},
+    trivial_tokens::{
+        parse_close_bracket, parse_close_paren, parse_equals, parse_open_bracket, parse_open_paren,
+        parse_star, parse_void,
+    },
     whitespace::parse_whitespace,
     Stream,
 };
@@ -53,6 +56,10 @@ enum InnerDeclarator {
     Pointer(Arc<InnerDeclarator>),
     Function {
         params: Vec<Param>,
+        declarator: Arc<InnerDeclarator>,
+    },
+    Array {
+        length: Expression,
         declarator: Arc<InnerDeclarator>,
     },
 }
@@ -124,10 +131,46 @@ fn parse_function_declarator<'s>(input: &mut Stream<'s>) -> PResult<InnerDeclara
     })
 }
 
+fn parse_array_size(input: &mut Stream) -> PResult<Expression> {
+    parse_whitespace(input)?;
+
+    parse_open_bracket(input)?;
+
+    let size = parse_expression(input)?;
+
+    parse_close_bracket(input)?;
+
+    Ok(size)
+}
+
+fn parse_array_declarator(input: &mut Stream) -> PResult<InnerDeclarator> {
+    parse_whitespace(input)?;
+
+    let declarator = parse_simple_declarator(input)?;
+
+    if let InnerDeclarator::Abstract = declarator {
+        return Err(winnow::error::ErrMode::Backtrack(
+            winnow::error::ContextError::new(),
+        ));
+    }
+
+    let size = parse_array_size(input)?;
+
+    Ok(InnerDeclarator::Array {
+        declarator: Arc::new(declarator),
+        length: size,
+    })
+}
+
 fn parse_direct_declarator<'s>(input: &mut Stream<'s>) -> PResult<InnerDeclarator> {
     parse_whitespace(input)?;
 
-    combinator::alt((parse_function_declarator, parse_simple_declarator)).parse_next(input)
+    combinator::alt((
+        parse_function_declarator,
+        parse_array_declarator,
+        parse_simple_declarator,
+    ))
+    .parse_next(input)
 }
 
 fn parse_pointer_declarator(input: &mut Stream) -> PResult<InnerDeclarator> {
@@ -141,7 +184,7 @@ fn parse_pointer_declarator(input: &mut Stream) -> PResult<InnerDeclarator> {
         .parse_next(input)
 }
 
-fn parse_abstract_direct_declarator(input: &mut Stream) -> PResult<InnerDeclarator> {
+fn parse_abstract_paren_declarator(input: &mut Stream) -> PResult<InnerDeclarator> {
     parse_whitespace(input)?;
 
     parse_open_paren(input)?;
@@ -151,6 +194,49 @@ fn parse_abstract_direct_declarator(input: &mut Stream) -> PResult<InnerDeclarat
     parse_close_paren(input)?;
 
     Ok(inner_declarator)
+}
+
+fn parse_abstract_length(input: &mut Stream) -> PResult<Expression> {
+    parse_whitespace(input)?;
+
+    parse_open_bracket(input)?;
+
+    let length = parse_expression(input)?;
+
+    parse_close_bracket(input)?;
+
+    Ok(length)
+}
+
+fn parse_abstract_array_declarator(input: &mut Stream) -> PResult<InnerDeclarator> {
+    parse_whitespace(input)?;
+
+    let inner_declarator = parse_abstract_paren_declarator(input);
+
+    let lengths: Vec<_> = combinator::repeat(0.., parse_abstract_length).parse_next(input)?;
+
+    let mut inner_declarator = if let Ok(inner_declarator) = inner_declarator {
+        inner_declarator
+    } else {
+        InnerDeclarator::Abstract
+    };
+
+    for length in lengths {
+        inner_declarator = InnerDeclarator::Array {
+            declarator: Arc::new(inner_declarator),
+            length,
+        };
+    }
+
+    Ok(inner_declarator)
+}
+
+fn parse_abstract_direct_declarator(input: &mut Stream) -> PResult<InnerDeclarator> {
+    combinator::alt((
+        parse_abstract_paren_declarator,
+        parse_abstract_array_declarator,
+    ))
+    .parse_next(input)
 }
 
 fn parse_abstract_pointer_declarator(input: &mut Stream) -> PResult<InnerDeclarator> {
@@ -261,9 +347,16 @@ fn process_declarator(
                     .collect(),
             };
 
-            println!("Derived type: {:?}", derived_type);
             process_declarator(declarator.as_ref().clone(), derived_type, abstract_allowed)
         }
+        InnerDeclarator::Array { length, declarator } => process_declarator(
+            declarator.as_ref().clone(),
+            Datatype::Array {
+                inner: Arc::new(base_type),
+                length,
+            },
+            abstract_allowed,
+        ),
         InnerDeclarator::Abstract => {
             println!("Abstract: {:?}", abstract_allowed);
             if abstract_allowed {

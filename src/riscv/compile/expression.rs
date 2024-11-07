@@ -369,6 +369,10 @@ impl Compile for BinaryOp {
 
                         Equals: {
                             instructions.push(Instruction::SeqP(Register::A0, Register::A0, Register::A1));
+                        },
+
+                        Comma: {
+                            // the correct value is already in a0, do absolutely nothing
                         }
                     ]
                 );

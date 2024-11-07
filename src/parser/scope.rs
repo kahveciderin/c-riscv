@@ -82,7 +82,7 @@ pub fn parse_label(input: &mut Stream) -> PResult<ScopeItem> {
             .id
             .clone();
 
-        let value = value.fold(&input.state);
+        let value = value.fold();
 
         if let Some(value) = value {
             input.state.push_case_to_switch(Case::Case(value));
